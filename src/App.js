@@ -41,12 +41,12 @@ class App extends Component {
                     <Item searchTerm="mountain" /></>
                 }
               />
-              <Route path="/beach" render={(props) => <>
+              <Route path="/animal" render={(props) => <>
                 <Header
                   handleSubmit={this.handleSubmit}
                   history={props.history}
                 />
-                <Item searchTerm="beach" />
+                <Item searchTerm="animal" />
               </>}
               />
               <Route path="/bird"
@@ -58,14 +58,15 @@ class App extends Component {
                   <Item searchTerm="bird" />
                 </>}
               />
-              <Route path="/food"
+              <Route path="/computer"
                 render={(props) => <>
                   <Header
                     handleSubmit={this.handleSubmit}
                     history={props.history}
                   />
-                  <Item searchTerm="food" />
-                </>} />
+                  <Item searchTerm="computer" />
+                </>}
+              />
               <Route
                 path="/search/:searchInput"
                 render={props => (

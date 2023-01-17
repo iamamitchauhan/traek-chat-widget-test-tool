@@ -7,6 +7,7 @@ const Container = ({ searchTerm }) => {
   const { images, loading, runSearch } = useContext(PhotoContext);
   useEffect(() => {
     runSearch(searchTerm);
+    document.title = `${searchTerm} | TRT`
     // eslint-disable-next-line
   }, [searchTerm]);
 

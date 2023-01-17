@@ -138,11 +138,6 @@ window.addEventListener(
           this.addEmojiPicker();
           this.setUserStatus({ status: "active" });
 
-          const eventState = {
-            isFormSubmitted: false
-          }
-
-          localStorage.setItem("eventState", JSON.stringify(eventState))
           window.addEventListener("message", ({ data }) => {
             if (data?.target === "traekAnalytics") {
               switch (data.action) {

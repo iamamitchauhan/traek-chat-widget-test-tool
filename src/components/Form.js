@@ -11,6 +11,7 @@ const Form = ({ handleSubmit, history }) => {
       className="search-form"
       onSubmit={e => handleSubmit(e, history, searchEntry)}
     >
+
       <input
         type="text"
         name="search"

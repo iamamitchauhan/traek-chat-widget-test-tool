@@ -1,10 +1,18 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { NavLink } from 'react-router-dom';
 
 const FeedBack = () => {
-  const onSubmit = () => {
+
+  const onSubmit = (e) => {
+    e.preventDefault();
     console.log("hello world")
   }
+
+  useEffect(() => {
+    document.title = `Feedback | TRT`
+  }, [])
+
+
   return <div>
     <NavLink to="/mountain"><span>Back</span></NavLink>
     <h1>FeedBack</h1>

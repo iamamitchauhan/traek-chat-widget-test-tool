@@ -63,9 +63,13 @@
       this.referrer = document.referrer || "direct";
       sessionStorage.setItem("referrer", document.referrer || "direct");
     }
+    this.width = window.innerWidth;
+    this.height = document.documentElement.scrollHeight;
+    this.heatmapData = [];
     this.apiKey = apiKey;
     this.allowLeads = false;
     this.allowForms = false;
+    this.type = "";
     this.userKey = localStorage.getItem("traek_user_key");
     this.sessionKey = sessionStorage.getItem("SESSION_KEY");
     this.ip = sessionStorage.getItem("ip");
@@ -74,13 +78,115 @@
     this.propertyId = null;
     this.websiteUrl = null;
     this.pageTitle = document.title;
-    this.pageUrl = document.URL;
+    this.pageUrl = document.URL.replace(/\/$/, "");
     this.userAgent = navigator.userAgent;
     this.chatWidget = null;
     this.hostUrl = hostUrl;
     this.cdnUrl = cdnUrl;
     this.elementUrlData = null;
+    this.isLoading = false;
+    this.heatmaps = [];
+    this.allowHeatmaps = false;
+    this.newVisit = true;
   };
+
+  App.TraekAnalytics.prototype.captureHeatmaps = function () {
+    setInterval(() => {
+      this.saveHeatmap();
+    }, 10 * 1000);
+    document.addEventListener(
+      "click",
+      (ev) => {
+        this.heatmapData.push({
+          x: ev.pageX,
+          y: ev.pageY,
+          height: this.height,
+          width: this.width,
+        });
+      },
+      true
+    );
+    let trackData = false;
+    setInterval(function () {
+      trackData = true;
+    }, 50);
+
+    let idleTimeout, idleInterval;
+    let lastX, lastY;
+    let idleCount;
+    const startIdle = () => {
+      idleCount = 0;
+      const idle = () => {
+        this.heatmapData.push({
+          x: lastX,
+          y: lastY,
+          height: this.height,
+          width: this.width,
+        });
+        idleCount++;
+        if (idleCount > 10) {
+          clearInterval(idleInterval);
+        }
+      };
+      idle();
+      idleInterval = setInterval(idle, 1000);
+    };
+    document.onmousemove = (ev) => {
+      if (idleTimeout) {
+        clearTimeout(idleTimeout);
+      }
+      if (idleInterval) {
+        clearInterval(idleInterval);
+      }
+      if (trackData) {
+        this.heatmapData.push({
+          x: ev.pageX,
+          y: ev.pageY,
+          height: this.height,
+          width: this.width,
+        });
+        trackData = false;
+      }
+
+      idleTimeout = setTimeout(startIdle, 500);
+    };
+    document.onmouseout = () => {
+      if (idleTimeout) {
+        clearTimeout(idleTimeout);
+      }
+
+      if (idleInterval) {
+        clearInterval(idleInterval);
+      }
+    };
+  };
+
+  App.TraekAnalytics.prototype.saveHeatmap = function () {
+    if (this.heatmapData.length > 0 && this.allowHeatmaps) {
+      this.heatmaps
+        .filter(({ url }) => url === this.pageUrl)
+        .forEach(({ _id }) => {
+          const body = {
+            propertyId: this.propertyId,
+            heatmapId: _id,
+            heatmapData: this.heatmapData,
+            userKey: this.userKey,
+            newVisit: this.newVisit,
+          };
+          let url = this.hostUrl + "/api/heatmaps/save";
+          fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+        });
+      this.newVisit = false;
+    }
+    this.heatmapData = [];
+  };
+
   App.TraekAnalytics.prototype.getUserIp = function () {
     return fetch("https://api.ipify.org/?format=json")
       .then((data) => data.json())
@@ -95,26 +201,89 @@
       });
   };
 
+  function uploadVisitorRecords(url) {
+    let visitors = JSON.parse(localStorage.getItem("visitors")) || [];
+    const hostUrl = url + "/api/trackdata";
+    navigator.sendBeacon(hostUrl, JSON.stringify({ visits: visitors, isBulkLeads: true }));
+
+    localStorage.setItem("visitors", JSON.stringify([]));
+  }
+
   // add leads to table on tab change/close, page change
   App.TraekAnalytics.prototype.callTrackingApi = function ({ initialCall }) {
+    try {
+      //check local event state
+      const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
+      let isFormSubmitted = eventState.isFormSubmitted || false;
 
-    if (this.allowLeads && this.callApi) {
-      navigator.sendBeacon(
-        this.hostUrl + "/api/trackdata",
-        JSON.stringify({
-          initialCall,
-          propertyId: this.propertyId,
-          time: new Date() - this.visitedTime,
-          pageTitle: this.pageTitle,
-          pageUrl: this.pageUrl,
-          referrer: this.referrer,
-          sessionKey: this.sessionKey,
-          ip: this.ip,
-          userKey: this.userKey,
-          userAgent: this.userAgent,
-          // formSubmiited: true
-        })
-      );
+      const payload = {
+        initialCall: false,
+        propertyId: this.propertyId,
+        time: new Date() - this.visitedTime,
+        pageTitle: this.pageTitle,
+        pageUrl: this.pageUrl,
+        referrer: this.referrer,
+        sessionKey: this.sessionKey,
+        ip: this.ip,
+        userKey: this.userKey,
+        userAgent: this.userAgent,
+      };
+
+      let visitors = JSON.parse(localStorage.getItem("visitors")) || [];
+      // track visitors local and submit those locally stored visitors once form submitted
+
+      console.info("callTrackingApi state =>", { isFormSubmitted, "this.type": this.type, "this.callApi": this.callApi });
+
+      if (!isFormSubmitted && this.type === "isp" && this.callApi) {
+        const index = visitors.findIndex((visit) => {
+          return (
+            visit.propertyId === this.propertyId &&
+            visit.sessionKey === this.sessionKey &&
+            visit.pageUrl === this.pageUrl &&
+            visit.userKey === this.userKey
+          );
+        });
+
+        console.info("callTrackingApi visitor index =>", index);
+
+        if (index >= 0) {
+          visitors[index].time += new Date() - this.visitedTime;
+        } else {
+          if (visitors.length <= 0) {
+            payload.initialCall = true;
+          }
+          visitors.push(payload);
+        }
+
+        localStorage.setItem("visitors", JSON.stringify(visitors));
+      } else if (this.allowLeads && this.callApi) {
+        if (isFormSubmitted && this.type === "isp") {
+          console.info('ISP lead tracked');
+
+          // if form submitted and type is ISP send this payload for visitor history
+          const hostUrl = this.hostUrl + "/api/trackdata";
+          navigator.sendBeacon(hostUrl, JSON.stringify({ visits: [payload], isBulkLeads: true }));
+        } else {
+          console.info('None ISP lead tracked');
+          navigator.sendBeacon(
+            this.hostUrl + "/api/trackdata",
+            JSON.stringify({
+              initialCall,
+              propertyId: this.propertyId,
+              time: new Date() - this.visitedTime,
+              pageTitle: this.pageTitle,
+              pageUrl: this.pageUrl,
+              referrer: this.referrer,
+              sessionKey: this.sessionKey,
+              ip: this.ip,
+              userKey: this.userKey,
+              userAgent: this.userAgent,
+            })
+          );
+        }
+      }
+    } catch (error) {
+      console.info("add leads error =>", error);
     }
   };
 
@@ -139,8 +308,20 @@
       try {
         let forms = document.querySelectorAll("form");
         function formSubmitted(e, form, data) {
-          let formName = e.currentTarget.name.value,
-            formId = e.currentTarget.id;
+          const formName = `${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`;
+          const formId = e.currentTarget.id;
+          let eventState = JSON.parse(localStorage.getItem("eventState")) || null;
+
+          if (eventState) {
+            eventState.isFormSubmitted = true;
+          } else {
+            eventState = {
+              isFormSubmitted: true,
+            };
+          }
+
+          localStorage.setItem("eventState", JSON.stringify(eventState));
+
           let formData = {
             sessionKey: data.sessionKey,
             userKey: data.userKey,
@@ -219,6 +400,8 @@
           if (checkEmpty.every((data) => data === true)) {
             navigator.sendBeacon(data.hostUrl + "/api/track/forms", JSON.stringify(formData));
           }
+
+          uploadVisitorRecords(data.hostUrl);
         }
         let localThis = this;
         forms.forEach((form) => {
@@ -233,6 +416,16 @@
   };
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
+    const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
+
+    if (!eventStateObj) {
+      const eventState = {
+        isFormSubmitted: false,
+      };
+
+      localStorage.setItem("eventState", JSON.stringify(eventState));
+    }
+
     if (!this.userKey) {
       let userKey = await this.generateKey();
       localStorage.setItem("traek_user_key", userKey);
@@ -261,14 +454,32 @@
         this.callApi = false;
       });
     }
-    fetch(this.hostUrl + "/api/properties/property/" + this.apiKey)
+    this.isLoading = true;
+
+    fetch(this.hostUrl + "/api/properties/property/" + this.apiKey, {
+      method: "POST",
+      body: JSON.stringify({
+        api_key: this.apiKey,
+        ip: this.ip,
+        originUrl: this.pageUrl,
+      }),
+    })
       .then((data) => data.json())
-      .then(({ realtime, property_id, verified, status, leadsCount, allowLeadsNumber, chat_widget, forms, website_url }) => {
+      .then(({ realtime, property_id, verified, status, leadsCount, allowLeadsNumber, chat_widget, forms, website_url, type, heatmaps }) => {
         this.propertyId = property_id;
         this.chatWidget = chat_widget;
         this.websiteUrl = website_url;
         this.allowForms = forms;
+        this.type = type;
+        this.heatmaps = heatmaps;
+
+        if (this.heatmaps?.length > 0) {
+          this.allowHeatmaps = true;
+          this.captureHeatmaps();
+        }
+
         const url = window.location != window.parent.location ? document.referrer : document.location.href;
+
         if (url !== "https://app.traek.io/") {
           this.getElementsData();
         }
@@ -279,6 +490,7 @@
           (function (history, obj) {
             var pushState = history.pushState;
             history.pushState = function (state) {
+              obj.allowHeatmaps = false;
               obj.callTrackingApi({ initialCall: false });
               obj.pageTitle = document.title;
               obj.pageUrl = document.URL;
@@ -308,7 +520,12 @@
           );
         }
       })
-      .catch((error) => console.log(error.message));
+      .catch((error) => {
+        console.log(error.message);
+      })
+      .finally(() => {
+        this.isLoading = false;
+      });
   };
 
   App.TraekAnalytics.prototype.getElementsData = async function () {
@@ -328,4 +545,4 @@
   };
 })(Traek);
 const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
-const traek = new Traek.TraekAnalytics(apiKey, "http://localhost:4200", "/SnapShot/uat").trackUserData();
+const traek = new Traek.TraekAnalytics(apiKey, "http://localhost:4200", "http://localhost:3000/uat").trackUserData();
