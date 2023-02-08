@@ -63,8 +63,8 @@
       this.referrer = document.referrer || "direct";
       sessionStorage.setItem("referrer", document.referrer || "direct");
     }
-    this.width = window.innerWidth;
-    this.height = document.documentElement.scrollHeight;
+    this.width = document.body.scrollWidth;
+    this.height = document.body.scrollHeight;
     this.heatmapData = [];
     this.apiKey = apiKey;
     this.allowLeads = false;
@@ -88,7 +88,52 @@
     this.heatmaps = [];
     this.allowHeatmaps = false;
     this.newVisit = true;
+    this.sessionRecord = localStorage.getItem("sessionrecords");
+    this.allowSessionRecord = true;
   };
+  App.TraekAnalytics.prototype.recordSessions = function () {
+    if (typeof rrwebRecord !== "undefined") {
+      rrwebRecord({
+        emit(event) {
+          try {
+            const oldData = JSON.parse(localStorage.getItem("sessionrecords")) ?? { data: [], timeStamp: new Date().getTime() }
+            oldData.data.push(event)
+            localStorage.setItem("sessionrecords", JSON.stringify({ ...oldData, timeStamp: new Date().getTime() }));
+          } catch (error) {
+            console.info('error =>', error);
+            localStorage.setItem("sessionrecords", JSON.stringify({ data: [event], timeStamp: new Date().getTime() }));
+          }
+        },
+        recordCanvas: true,
+      });
+    }
+  };
+
+  function saveSessionRecording({ propertyId, userKey, hostUrl }) {
+    // console.info("call saveSessionRecording function ==================");
+    const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
+    if (eventState.isFormSubmitted === true) {
+      // console.log(JSON.parse(localStorage.getItem("sessionrecords")), "SESSIIONRECORD");
+      const recordingResults = JSON.parse(localStorage.getItem("sessionrecords"))
+      const url = hostUrl + "/api/session-recording";
+
+      const payload = {
+        "data": recordingResults.data,
+        "propertyId": propertyId,
+        "userKey": userKey
+      }
+
+      fetch(url, {
+        method: "POST",
+        headers: {
+          // "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }).then(resp => {
+        localStorage.setItem("sessionrecords", JSON.stringify({ data: [], timeStamp: new Date().getTime() }));
+      });
+    }
+  }
 
   App.TraekAnalytics.prototype.captureHeatmaps = function () {
     setInterval(() => {
@@ -100,8 +145,8 @@
         this.heatmapData.push({
           x: ev.pageX,
           y: ev.pageY,
-          height: this.height,
-          width: this.width,
+          height: document.body.scrollHeight,
+          width: document.body.scrollWidth,
         });
       },
       true
@@ -142,8 +187,8 @@
         this.heatmapData.push({
           x: ev.pageX,
           y: ev.pageY,
-          height: this.height,
-          width: this.width,
+          height: document.body.scrollHeight,
+          width: document.body.scrollWidth,
         });
         trackData = false;
       }
@@ -211,6 +256,8 @@
 
   // add leads to table on tab change/close, page change
   App.TraekAnalytics.prototype.callTrackingApi = function ({ initialCall }) {
+
+    console.info('initialCall =>', initialCall);
     try {
       //check local event state
       const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
@@ -229,10 +276,10 @@
         userAgent: this.userAgent,
       };
 
+      console.info('payload =>', payload);
+
       let visitors = JSON.parse(localStorage.getItem("visitors")) || [];
       // track visitors local and submit those locally stored visitors once form submitted
-
-      console.info("callTrackingApi state =>", { isFormSubmitted, "this.type": this.type, "this.callApi": this.callApi });
 
       if (!isFormSubmitted && this.type === "isp" && this.callApi) {
         const index = visitors.findIndex((visit) => {
@@ -243,8 +290,6 @@
             visit.userKey === this.userKey
           );
         });
-
-        console.info("callTrackingApi visitor index =>", index);
 
         if (index >= 0) {
           visitors[index].time += new Date() - this.visitedTime;
@@ -258,13 +303,13 @@
         localStorage.setItem("visitors", JSON.stringify(visitors));
       } else if (this.allowLeads && this.callApi) {
         if (isFormSubmitted && this.type === "isp") {
-          console.info('ISP lead tracked');
+          console.info("ISP lead tracked");
 
           // if form submitted and type is ISP send this payload for visitor history
           const hostUrl = this.hostUrl + "/api/trackdata";
           navigator.sendBeacon(hostUrl, JSON.stringify({ visits: [payload], isBulkLeads: true }));
         } else {
-          console.info('None ISP lead tracked');
+          console.info("None ISP lead tracked");
           navigator.sendBeacon(
             this.hostUrl + "/api/trackdata",
             JSON.stringify({
@@ -282,6 +327,9 @@
           );
         }
       }
+
+      this.visitedTime = new Date();
+
     } catch (error) {
       console.info("add leads error =>", error);
     }
@@ -307,8 +355,8 @@
       ];
       try {
         let forms = document.querySelectorAll("form");
-        function formSubmitted(e, form, data) {
-          const formName = `${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`;
+        function formSubmitted(e, form, data, cb) {
+          const formName = e.currentTarget.name.value;
           const formId = e.currentTarget.id;
           let eventState = JSON.parse(localStorage.getItem("eventState")) || null;
 
@@ -401,12 +449,15 @@
             navigator.sendBeacon(data.hostUrl + "/api/track/forms", JSON.stringify(formData));
           }
 
-          uploadVisitorRecords(data.hostUrl);
+          cb(true)
         }
         let localThis = this;
         forms.forEach((form) => {
           form.onsubmit = function (e) {
-            formSubmitted(e, form, localThis);
+            formSubmitted(e, form, localThis, () => {
+              uploadVisitorRecords(localThis.hostUrl);
+              // saveSessionRecording({ propertyId: localThis.propertyId, userKey: localThis.userKey, hostUrl: localThis.hostUrl });
+            });
           };
         });
       } catch (error) {
@@ -416,45 +467,109 @@
   };
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
-    const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
 
-    if (!eventStateObj) {
-      const eventState = {
-        isFormSubmitted: false,
-      };
 
-      localStorage.setItem("eventState", JSON.stringify(eventState));
-    }
+    let previousUrl = '';
+    let _this = this;
 
-    if (!this.userKey) {
-      let userKey = await this.generateKey();
-      localStorage.setItem("traek_user_key", userKey);
-      this.userKey = userKey;
+
+    const titleObserver = new MutationObserver(([{ target }]) => {
+      // Log change
+      _this.pageTitle = target.text
     }
-    if (!this.sessionKey) {
-      let sessionKey = await this.generateKey();
-      sessionStorage.setItem("SESSION_KEY", sessionKey);
-      this.sessionKey = sessionKey;
-    }
-    if (!this.ip) {
-      let ip = await this.getUserIp();
-      sessionStorage.setItem("ip", ip);
-      this.ip = ip;
-    }
-    if (this.apiKey && this.userKey && this.sessionKey && this.ip) {
+    )
+
+    titleObserver.observe(document.querySelector('title'), {
+      childList: true,
+    })
+
+
+    const observer = new MutationObserver(async function (mutations) {
+      if (window.location.href !== previousUrl) {
+
+
+
+        previousUrl = window.location.href;
+        console.log(`URL changed to ${window.location.href}`);
+        _this.pageUrl = window.location.href
+
+        const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
+
+        if (!eventStateObj) {
+          const eventState = {
+            isFormSubmitted: false,
+          };
+
+          localStorage.setItem("eventState", JSON.stringify(eventState));
+        }
+
+
+
+        // if userKey is not set generate Key and set userKey in localstorage
+        if (!_this.userKey) {
+          let userKey = await _this.generateKey();
+          localStorage.setItem("traek_user_key", userKey);
+          _this.userKey = userKey;
+        }
+
+        // if sessionKey is not set generate Key and set sessionKey in localstorage
+        if (!_this.sessionKey) {
+          let sessionKey = await _this.generateKey();
+          sessionStorage.setItem("SESSION_KEY", sessionKey);
+          _this.sessionKey = sessionKey;
+
+          const eventState = {
+            isFormSubmitted: false,
+          };
+
+          localStorage.setItem("eventState", JSON.stringify(eventState));
+        }
+
+        // if IP is not captured get IP from service
+        if (!_this.ip) {
+          let ip = await _this.getUserIp();
+          sessionStorage.setItem("ip", ip);
+          _this.ip = ip;
+        }
+
+        _this.sessionRecord = localStorage.getItem("sessionrecords");
+
+        if (_this.apiKey && _this.userKey && _this.sessionKey && _this.ip && _this.allowSessionRecord) {
+          setTimeout(() => {
+            _this.callTrackingApi({ initialCall: false });
+          }, 20);
+        }
+      }
+    });
+
+
+
+    const config = { subtree: true, childList: true };
+    observer.observe(document, config);
+
+    this.isLoading = true;
+
+
+    if (this.apiKey && this.userKey && this.sessionKey && this.ip && this.allowSessionRecord) {
       window.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-          this.visitedTime = new Date();
+          // this.visitedTime = new Date();
+        }
+
+        if (document.visibilityState === "hidden") {
+          // saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, hostUrl: this.hostUrl });
+          this.allowSessionRecord = false;
         } else {
-          this.callTrackingApi({ initialCall: false });
+          this.allowSessionRecord = true;
         }
       });
+
       window.addEventListener("beforeunload", () => {
         this.callTrackingApi({ initialCall: false });
         this.callApi = false;
+        // saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, hostUrl: this.hostUrl });
       });
     }
-    this.isLoading = true;
 
     fetch(this.hostUrl + "/api/properties/property/" + this.apiKey, {
       method: "POST",
@@ -465,7 +580,7 @@
       }),
     })
       .then((data) => data.json())
-      .then(({ realtime, property_id, verified, status, leadsCount, allowLeadsNumber, chat_widget, forms, website_url, type, heatmaps }) => {
+      .then(({ realtime, property_id, verified, status, leadsCount, allowLeadsNumber, chat_widget, forms, website_url, type, heatmaps, }) => {
         this.propertyId = property_id;
         this.chatWidget = chat_widget;
         this.websiteUrl = website_url;
@@ -477,6 +592,17 @@
           this.allowHeatmaps = true;
           this.captureHeatmaps();
         }
+
+        // load rrweb script 
+        const traekRRWebScript = document.createElement("script");
+        traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
+
+        traekRRWebScript.onload = async () => {
+          if (this.allowSessionRecord) {
+            await this.recordSessions();
+          }
+        }
+        document.head.appendChild(traekRRWebScript);
 
         const url = window.location != window.parent.location ? document.referrer : document.location.href;
 
@@ -544,5 +670,10 @@
     }
   };
 })(Traek);
+
 const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
-const traek = new Traek.TraekAnalytics(apiKey, "http://localhost:4200", "http://localhost:3000/uat").trackUserData();
+const isLive = !window.location.origin.includes("localhost");
+console.info('isLive =>', isLive);
+
+const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
+const traek = new Traek.TraekAnalytics(apiKey, hostUrl, `${window.location.origin}/uat`).trackUserData();

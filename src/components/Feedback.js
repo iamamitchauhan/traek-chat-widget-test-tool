@@ -27,8 +27,8 @@ const FeedBack = () => {
           <input type='text' name="surname" />
         </div>
         <div>
-          <span>Bio</span>
-          <textarea name="bio"></textarea>
+          <span>Email</span>
+          <input name="email" />
         </div>
         <div>
           <button type='submit'>Submit</button>
