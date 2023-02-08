@@ -1,6 +1,6 @@
 body {
   text-align: center;
-  font-family: "Josefin Sans", Helvetica, Arial, sans-serif;
+  font-family:"monospace";
   color: #3f4850;
 }
 
@@ -12,7 +12,7 @@ h2 {
 }
 
 h1 {
-  font-family: "Lobster", "Josefin Sans", Helvetica, Arial, sans-serif;
+  font-family:"monospace";
   font-size: 4em;
   color: #051c33;
 }

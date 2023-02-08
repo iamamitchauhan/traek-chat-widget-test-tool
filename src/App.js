@@ -1,11 +1,12 @@
 import React, { Component } from "react";
 import PhotoContextProvider from "./context/PhotoContext";
-import { HashRouter, Route, Switch, Redirect } from "react-router-dom";
+import { HashRouter, Route, Switch } from "react-router-dom";
 import Header from "./components/Header";
 import Item from "./components/Item";
 import Search from "./components/Search";
 import NotFound from "./components/NotFound";
 import FeedBack from "./components/Feedback";
+import Home from "./components/Home";
 
 
 class App extends Component {
@@ -26,8 +27,14 @@ class App extends Component {
               <Route
                 exact
                 path="/"
-                render={() => <Redirect to="/mountain" />}
+                render={() => <>
+                  <Header
+                    handleSubmit={this.handleSubmit}
+                  />
+                  <Home />
+                </>}
               />
+
 
               <Route
                 path="/mountain"

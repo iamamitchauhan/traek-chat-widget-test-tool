@@ -10,6 +10,7 @@ const Navigation = () => {
         window.location.reload();
       }}>Clear Site Data</button>
       <ul>
+        <li><NavLink to="/">Home</NavLink></li>
         <li><NavLink to="/mountain">Mountain</NavLink></li>
         <li><NavLink to="/animal">Animal</NavLink></li>
         <li><NavLink to="/bird">Birds</NavLink></li>
