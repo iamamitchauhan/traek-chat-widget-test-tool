@@ -32,7 +32,7 @@ const Home = () => {
         <img alt={`avtar-model-130`} src="https://uploads.codesandbox.io/uploads/user/9480d5c0-6b58-40de-8854-caacb6c4a2f1/ySqU-1.jpg" />
       </div>
       <div class="item">
-        <img src="https://uploads.codesandbox.io/uploads/user/9480d5c0-6b58-40de-8854-caacb6c4a2f1/9UmX-11.jpg" />
+        <img alt={`avtar-model-1358`} src="https://uploads.codesandbox.io/uploads/user/9480d5c0-6b58-40de-8854-caacb6c4a2f1/9UmX-11.jpg" />
       </div>
     </OwlCarousel>
   </div>
