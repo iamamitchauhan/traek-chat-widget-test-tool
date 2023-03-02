@@ -16,6 +16,7 @@ const Navigation = () => {
         <li><NavLink to="/bird">Birds</NavLink></li>
         <li><NavLink to="/computer">Computer</NavLink></li>
         <li><NavLink to="/feedback">Feedback</NavLink></li>
+        <li><NavLink to="/rrweb">RR Web</NavLink></li>
       </ul>
     </nav>
   );

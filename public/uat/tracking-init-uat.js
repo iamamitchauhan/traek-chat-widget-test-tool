@@ -183,6 +183,10 @@
             console.info('rrwebRecord event =>', event);
             add(event);
 
+            getAll((events) => {
+              console.info('All events =>', events);
+            })
+
             // localStorage.setItem("sessionrecords", JSON.stringify(newData));
           } catch (error) {
             console.info("error =>", error);

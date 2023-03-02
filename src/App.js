@@ -7,6 +7,7 @@ import Search from "./components/Search";
 import NotFound from "./components/NotFound";
 import FeedBack from "./components/Feedback";
 import Home from "./components/Home";
+import RRWeb from "./components/RRWeb";
 
 
 class App extends Component {
@@ -81,6 +82,7 @@ class App extends Component {
                 )}
               />
               <Route path="/feedback" render={() => <FeedBack />} />
+              <Route path="/rrweb" render={() => <RRWeb />} />
               <Route component={NotFound} />
             </Switch>
           </div>
