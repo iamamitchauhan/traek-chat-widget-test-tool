@@ -197,7 +197,7 @@
           }
         },
         recordCanvas: true,
-        ignoreClasses: ["owl-dot", "owl-item", "active"],
+        // ignoreClasses: ["owl-dot", "owl-item", "active"],
         sampling: {
           // do not record mouse movement
           mousemove: true,
