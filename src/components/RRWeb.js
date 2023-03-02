@@ -24,10 +24,10 @@ const RRWeb = ({ propertyId = "6322d3511729b3f58502ac28" }) => {
       setIsLoading(false)
     }
   }
-
   useEffect(() => {
     fetchSessionData();
-  }, [fetchSessionData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   useEffect(() => {
