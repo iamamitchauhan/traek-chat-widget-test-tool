@@ -180,8 +180,11 @@
           try {
             const newData = JSON.parse(localStorage.getItem("sessionrecords")) ?? [];
             newData.push(event);
+
             console.info('rrwebRecord event =>', event);
-            add(event);
+            if (event) {
+              add(event);
+            }
 
             getAll((events) => {
               console.info('All events =>', events);

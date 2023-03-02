@@ -15,7 +15,7 @@ const RRWeb = ({ propertyId = "6322d3511729b3f58502ac28" }) => {
   const fetchSessionData = async () => {
     try {
       setIsLoading(true)
-      const { data: { data = [] }, status } = await Axios.get("http://localhost:4200/api/session-recording", { params: { propertyId, userKey } })
+      const { data: { data = [] } } = await Axios.get("https://uat-app.traek.io/api/session-recording", { params: { propertyId, userKey } })
       setEvents(data)
 
     } catch (error) {
