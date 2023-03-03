@@ -223,7 +223,7 @@
     return res;
   }
 
-  async function sequentialCall(url, events, propertyId, userKey) {
+  async function sequentialCall(url, events, propertyId, userKey, sessionKey) {
 
     const eventsList = sliceIntoChunks(events, 300);
     for (let events of eventsList) {
@@ -231,7 +231,7 @@
       try {
         const requestOptions = {
           method: 'POST',
-          body: JSON.stringify({ data: events, propertyId, userKey }),
+          body: JSON.stringify({ data: events, propertyId, userKey, sessionKey }),
         };
 
         const response = await fetch(url, requestOptions)
@@ -249,7 +249,7 @@
     console.log('finish');
   }
 
-  function saveSessionRecording({ propertyId, userKey, hostUrl }) {
+  function saveSessionRecording({ propertyId, userKey, sessionKey, hostUrl }) {
 
     //get data
 
@@ -261,7 +261,7 @@
         if (events?.length > 0) {
           const url = hostUrl + "/api/session-recording";
 
-          sequentialCall(url, events, propertyId, userKey);
+          sequentialCall(url, events, propertyId, userKey, sessionKey);
         }
       });
     }
@@ -603,7 +603,7 @@
           form.onsubmit = function (e) {
             formSubmitted(e, form, localThis, () => {
               uploadVisitorRecords(localThis.hostUrl);
-              saveSessionRecording({ propertyId: localThis.propertyId, userKey: localThis.userKey, hostUrl: localThis.hostUrl });
+              saveSessionRecording({ propertyId: localThis.propertyId, userKey: localThis.userKey, sessionKey: localThis.sessionKey, hostUrl: localThis.hostUrl });
             });
           };
         });
@@ -727,7 +727,7 @@
                 this.callTrackingApi();
               }
               if (document.visibilityState === "hidden") {
-                saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, hostUrl: this.hostUrl });
+                saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, sessionKey: this.userKey, hostUrl: this.hostUrl });
                 this.allowSessionRecord = false;
               } else {
                 this.allowSessionRecord = true;
@@ -737,7 +737,7 @@
               this.saveHeatmap();
               this.callTrackingApi();
               this.callApi = false;
-              saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, hostUrl: this.hostUrl });
+              saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, sessionKey: this.sessionKey, hostUrl: this.hostUrl });
             });
 
             const observer = new MutationObserver(() => {
