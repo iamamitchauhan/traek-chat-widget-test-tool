@@ -592,6 +592,7 @@
         // update latest page and page URL when change the url
         _this.pageTitle = document.title
         _this.pageUrl = location.href
+        console.info('page changed =>', location.href);
       }
     });
 
