@@ -86,7 +86,6 @@
     this.heatmaps = [];
     this.allowHeatmaps = false;
     this.newVisit = true;
-    this.sessionRecord = localStorage.getItem("sessionrecords");
     this.allowSessionRecord = true;
   };
 
@@ -97,7 +96,7 @@
   var storeName = "events";
 
   function logerr(err) {
-    console.log(err);
+    console.log("logerr", err);
   }
 
   function connectDB(f) {
@@ -116,8 +115,7 @@
 
       //Create store
       if (!Db.objectStoreNames.contains(storeName)) {
-        var store = Db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
-        //store.createIndex("NameIndex", ["name.last", "name.first"], { unique: false });
+        Db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
       }
       connectDB(f);
     }
@@ -154,7 +152,7 @@
       var objectStoreRequest = objectStore.add(obj);
       objectStoreRequest.onerror = logerr;
       objectStoreRequest.onsuccess = function () {
-        // console.info(objectStoreRequest.result);
+        // console.info("Success Add", objectStoreRequest.result);
       }
     });
   }
@@ -166,96 +164,56 @@
       var objectStoreRequest = objectStore.clear();
       objectStoreRequest.onerror = logerr;
       objectStoreRequest.onsuccess = function () {
-        console.log("Store cleared");
+        // console.log("Store cleared");
       }
     });
   }
-
-
 
   App.TraekAnalytics.prototype.recordSessions = function () {
     if (typeof rrwebRecord !== "undefined") {
       rrwebRecord({
         emit(event) {
           try {
-            const newData = JSON.parse(localStorage.getItem("sessionrecords")) ?? [];
-            newData.push(event);
-
-            console.info('rrwebRecord event =>', event);
             if (event) {
               add(event);
             }
 
-            getAll((events) => {
-              console.info('All events =>', events);
-            })
-
-            // localStorage.setItem("sessionrecords", JSON.stringify(newData));
           } catch (error) {
-            console.info("error =>", error);
-            // localStorage.setItem("sessionrecords", JSON.stringify([event]));
+            console.error("rrwebRecord error =>", error);
           }
         },
+        ignoreClasses: ["owl-dot", "owl-item", ""],
         recordCanvas: true,
-        // ignoreClasses: ["owl-dot", "owl-item", "active"],
-        sampling: {
-          // do not record mouse movement
-          mousemove: true,
-          // do not record mouse interaction
-          mouseInteraction: false,
-          // set the interval of scrolling event
-          scroll: 150, // do not emit twice in 150ms
-          // set the interval of media interaction event
-          media: 800,
-          // set the timing of record input
-          input: 'last' // When input mulitple characters, only record the final input
-        },
       });
     }
   };
 
-  function sliceIntoChunks(arr, chunkSize) {
-    const res = [];
-    for (let i = 0; i < arr.length; i += chunkSize) {
-      const chunk = arr.slice(i, i + chunkSize);
-      res.push(chunk);
-    }
-    return res;
-  }
-
   async function sequentialCall(url, events, propertyId, userKey, sessionKey) {
+    try {
+      const requestOptions = {
+        method: 'POST',
+        body: JSON.stringify({ data: events, propertyId, userKey, sessionKey }),
+      };
 
-    const eventsList = sliceIntoChunks(events, 300);
-    for (let events of eventsList) {
+      const response = await fetch(url, requestOptions)
+      const data = await response.json()
 
-      try {
-        const requestOptions = {
-          method: 'POST',
-          body: JSON.stringify({ data: events, propertyId, userKey, sessionKey }),
-        };
-
-        const response = await fetch(url, requestOptions)
-        const data = await response.json()
-
-        if (data) {
-          console.info('record saved =>');
-        }
-      } catch (error) {
-        console.info('ERROR WHILE saving API CALL');
+      if (data) {
+        console.info('record saved =>');
       }
-    };
+    } catch (error) {
+      console.info('ERROR WHILE saving API CALL');
+    }
 
     clearStore();
     console.log('finish');
   }
 
   function saveSessionRecording({ propertyId, userKey, sessionKey, hostUrl }) {
-
     //get data
-
     console.info("call saveSessionRecording function ==================");
-
     const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
+
     if (eventState?.isFormSubmitted) {
       getAll((events) => {
         if (events?.length > 0) {
@@ -282,6 +240,7 @@
         var sibIndex = 0;
         for (var i = 0; i < el.parentNode.childNodes.length; i++) {
           var sib = el.parentNode.childNodes[i];
+
           if (sib.nodeName == el.nodeName) {
             if (sib === el) {
               sibIndex = sibCount;
@@ -290,16 +249,20 @@
           }
         }
         var nodeName = el.nodeName.toLowerCase();
+
         if (isShadow) {
           nodeName += "::shadow";
           isShadow = false;
         }
+
         if (sibCount > 1) {
           stack.unshift(nodeName + ":nth-of-type(" + (sibIndex + 1) + ")");
         } else {
           stack.unshift(nodeName);
         }
+
         el = el.parentNode;
+
         if (el.nodeType === 11) {
           isShadow = true;
           el = el.host;
@@ -320,6 +283,7 @@
       "click",
       ({ target, offsetX, offsetY }) => {
         let { clientHeight, clientWidth } = getCoords(target);
+
         if (!this.heatmapData.click) {
           this.heatmapData.click = [];
         }
@@ -341,9 +305,11 @@
     document.onmousemove = ({ target, offsetX, offsetY }) => {
       if (trackData) {
         let { clientHeight, clientWidth } = getCoords(target);
+
         if (!this.heatmapData.move) {
           this.heatmapData.move = [];
         }
+
         this.heatmapData.move.push({
           p: getDomPath(target),
           x: (offsetX * 100) / clientWidth,
@@ -396,7 +362,7 @@
       .then((data) => data.json())
       .then(({ key }) => key)
       .catch((error) => {
-        console.log(error.message);
+        console.error("generateKey", error.message);
       });
   };
 
@@ -429,13 +395,14 @@
       redirect: "follow",
     };
 
-    fetch(this.hostUrl + "/api/leads/feeds", requestOptions).catch((error) => console.log("error", error));
+    fetch(this.hostUrl + "/api/leads/feeds", requestOptions).catch((error) => console.error("callFeedsApi error", error));
   };
 
   // add leads to table on tab change/close, page change
   App.TraekAnalytics.prototype.callTrackingApi = function () {
     try {
       const hostUrl = this.hostUrl + "/api/trackdata";
+
       if (this.allowLeads && this.callApi) {
         //check local event state
         const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
@@ -464,6 +431,7 @@
               visit.userKey === this.userKey
             );
           });
+
           if (index >= 0) {
             visitors[index].time += new Date() - this.visitedTime;
           } else {
@@ -478,7 +446,7 @@
         }
       }
     } catch (error) {
-      console.info("add leads error =>", error);
+      console.error("add leads error =>", error);
     }
   };
 
@@ -543,12 +511,14 @@
             }
             let elementObject = { tag, type, label, name };
             const checkRequiredOrEmpty = (value) => {
+
               if (value === "" || value === null || value === undefined) {
                 checkEmpty.push(null);
               } else {
                 checkEmpty.push(true);
               }
             };
+
             if (tag === "TEXTAREA") {
               elementObject.value = element.value;
               formData.elements.push(elementObject);
@@ -608,23 +578,23 @@
           };
         });
       } catch (error) {
-        console.log(error);
+        console.error("trackForms", error);
       }
     }
   };
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
+    const _this = this;
+    let previousUrl = this.pageUrl;
 
-
-
-
-
-    let previousUrl = "";
     const observer = new MutationObserver(function (mutations) {
       if (location.href !== previousUrl) {
-        previousUrl = location.href;
+        // update latest page and page URL when change the url
+        _this.pageTitle = document.title
+        _this.pageUrl = location.href
       }
     });
+
     const config = { subtree: true, childList: true };
     observer.observe(document, config);
 
@@ -643,6 +613,7 @@
       localStorage.setItem("traek_user_key", userKey);
       this.userKey = userKey;
     }
+
     if (!this.sessionKey) {
       let sessionKey = await this.generateKey();
       sessionStorage.setItem("SESSION_KEY", sessionKey);
@@ -654,10 +625,7 @@
 
       // clear event state and session records on new session
       localStorage.setItem("eventState", JSON.stringify(eventState));
-      // localStorage.setItem("sessionrecords", JSON.stringify([]));
-
       clearStore()
-
     }
 
     if (!this.ip) {
@@ -665,8 +633,6 @@
       sessionStorage.setItem("ip", ip);
       this.ip = ip;
     }
-
-    this.sessionRecord = localStorage.getItem("sessionrecords");
 
     this.isLoading = true;
 
@@ -727,7 +693,7 @@
                 this.callTrackingApi();
               }
               if (document.visibilityState === "hidden") {
-                saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, sessionKey: this.userKey, hostUrl: this.hostUrl });
+                saveSessionRecording({ propertyId: this.propertyId, userKey: this.userKey, sessionKey: this.sessionKey, hostUrl: this.hostUrl });
                 this.allowSessionRecord = false;
               } else {
                 this.allowSessionRecord = true;
@@ -772,7 +738,7 @@
         }
       })
       .catch((error) => {
-        console.log(error.message);
+        console.log("error", error.message);
       })
       .finally(() => {
         this.isLoading = false;
@@ -780,7 +746,7 @@
   };
 
   App.TraekAnalytics.prototype.getElementsData = async function () {
-    // return;
+    return;
     try {
       const fetchedUrls = await fetch(`${this.cdnUrl}/themes/bars/${this.websiteUrl}/elementUrls.json`);
       const urlsObject = Object.values(JSON.parse(await fetchedUrls.text()));
@@ -792,7 +758,7 @@
       elementsScript.type = "text/javascript";
       document.head.appendChild(elementsScript);
     } catch (error) {
-      console.log("ERROR WHILE FETCHING ELEMENT URLS IN TRACKING-INIT-UAT", error);
+      console.error("ERROR WHILE FETCHING ELEMENT URLS IN TRACKING-INIT-UAT", error);
     }
   };
 })(Traek);
