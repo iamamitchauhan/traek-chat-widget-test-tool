@@ -771,5 +771,5 @@ const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[
 const isLive = !window.location.origin.includes("localhost");
 console.info('isLive =>', isLive);
 
-const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
+const hostUrl = isLive ? "https://app.traek.io" : "http://localhost:4200"
 const traek = new Traek.TraekAnalytics(apiKey, hostUrl, `${window.location.origin}/uat`).trackUserData();
