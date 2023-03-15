@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const Form = ({ handleSubmit, history }) => {
   const [searchEntry, setSearchEntry] = useState("");
@@ -6,6 +6,12 @@ const Form = ({ handleSubmit, history }) => {
   const updateSearchInput = e => {
     setSearchEntry(e.target.value);
   };
+
+  useEffect(() => {
+    window.location.reload();
+  }, [])
+
+
   return (
     <form
       className="search-form"
