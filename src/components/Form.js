@@ -7,11 +7,6 @@ const Form = ({ handleSubmit, history }) => {
     setSearchEntry(e.target.value);
   };
 
-  useEffect(() => {
-    window.location.reload();
-  }, [])
-
-
   return (
     <form
       className="search-form"

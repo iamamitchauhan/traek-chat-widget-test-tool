@@ -10,6 +10,7 @@ const FeedBack = () => {
 
   useEffect(() => {
     document.title = `Feedback | TRT`
+    window.location.reload();
   }, [])
 
 
