@@ -5,7 +5,7 @@ import Navigation from "./Navigation";
 const Header = ({ history, handleSubmit }) => {
   return (
     <div>
-      <h1>Traek Development</h1>
+      <h1>Traek Development Tool</h1>
       <Form history={history} handleSubmit={handleSubmit} />
       <Navigation />
     </div>
