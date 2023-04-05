@@ -188,19 +188,14 @@
 
   async function sequentialCall(url, payload) {
     try {
-      const requestOptions = {
-        method: "POST",
-        keepalive: true,
-        body: JSON.stringify(payload),
-        referrerPolicy: 'no-referrer-when-downgrade'
-      };
+      navigator.sendBeacon(url, JSON.stringify(payload));
 
-      const response = await fetch(url, requestOptions);
-      const data = await response.json();
+      // const response = await fetch(url, requestOptions);
+      // const data = await response.json();
 
-      if (data) {
-        console.info("record saved =>");
-      }
+      // if (data) {
+      //   console.info("record saved =>");
+      // }
     } catch (error) {
       console.info("ERROR WHILE saving API CALL", error);
     }
