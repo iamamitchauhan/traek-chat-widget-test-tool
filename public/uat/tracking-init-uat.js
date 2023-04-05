@@ -190,6 +190,7 @@
     try {
       const requestOptions = {
         method: "POST",
+        keepalive: true,
         body: JSON.stringify(payload),
       };
 
@@ -200,7 +201,7 @@
         console.info("record saved =>");
       }
     } catch (error) {
-      console.info("ERROR WHILE saving API CALL");
+      console.info("ERROR WHILE saving API CALL", error);
     }
 
     clearStore();
@@ -209,6 +210,7 @@
 
   function saveSessionRecording({ propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle }, isFormSession = false) {
 
+    console.info('isFormSession =>', isFormSession);
     //get data
     console.info("call saveSessionRecording function ==================");
     const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
