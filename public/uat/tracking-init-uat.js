@@ -192,6 +192,7 @@
         method: "POST",
         keepalive: true,
         body: JSON.stringify(payload),
+        referrerPolicy: 'no-referrer-when-downgrade'
       };
 
       const response = await fetch(url, requestOptions);
