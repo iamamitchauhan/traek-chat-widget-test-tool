@@ -188,16 +188,20 @@
 
   async function sequentialCall(url, payload) {
     try {
-      navigator.sendBeacon(url, JSON.stringify(payload));
+      const requestOptions = {
+        method: "POST",
+        body: JSON.stringify(payload),
+      };
 
-      // const response = await fetch(url, requestOptions);
-      // const data = await response.json();
+      const response = await fetch(url, requestOptions);
+      const data = await response.json();
 
-      // if (data) {
-      //   console.info("record saved =>");
-      // }
+      if (data) {
+        console.info("record saved =>");
+      }
+
     } catch (error) {
-      console.info("ERROR WHILE saving API CALL", error);
+      console.info('sequentialCall error =>', error);
     }
 
     clearStore();
@@ -450,7 +454,7 @@
       if (this.allowLeads && this.callApi) {
         //check local event state
         const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
-        let isFormSubmitted = eventState.isFormSubmitted || false;
+        let isFormSubmitted = eventState?.isFormSubmitted || false;
 
         const payload = {
           propertyId: this.propertyId,
