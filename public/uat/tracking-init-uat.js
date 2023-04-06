@@ -88,6 +88,7 @@
     this.allowHeatmaps = false;
     this.newVisit = true;
     this.allowSessionRecord = true;
+    this.isSessionAPIInProgress = false;
   };
 
   // This works on all devices/browsers, and uses IndexedDBShim as a final fallback
@@ -186,55 +187,49 @@
     }
   };
 
-  async function sequentialCall(url, payload) {
-    try {
-      const requestOptions = {
-        method: "POST",
-        body: JSON.stringify(payload),
-      };
-
-      const response = await fetch(url, requestOptions);
-      const data = await response.json();
-
-      if (data) {
-        console.info("record saved =>");
-      }
-
-    } catch (error) {
-      console.info('sequentialCall `error =>', error);
-    }
-
-    clearStore();
-    console.log("finish");
-  }
-
-  function saveSessionRecording({ propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle }, isFormSession = false) {
+  App.TraekAnalytics.prototype.saveSessionRecording = function (isFormSession = false) {
 
     console.info('isFormSession =>', isFormSession);
+    const { propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle } = this;
+
     //get data
-    console.info("call saveSessionRecording function ==================");
-    const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
+    console.info("call saveSessionRecording function ==================", this.userKey);
 
-    if (eventState?.isFormSubmitted) {
-      getAll((events) => {
-        if (events?.length > 0) {
-          const url = hostUrl + "/api/session-recording";
-          const payload = {
-            data: events,
-            propertyId,
-            userKey,
-            sessionKey,
-            ip,
-            userAgent,
-            pageUrl,
-            page: pageTitle,
-            isFormSession
-          }
-
-          sequentialCall(url, payload);
+    getAll(async (events) => {
+      console.info('events =>', events);
+      if (events?.length > 0) {
+        const url = hostUrl + "/api/session-recording";
+        const payload = {
+          data: events,
+          propertyId,
+          userKey,
+          sessionKey,
+          ip,
+          userAgent,
+          pageUrl,
+          page: pageTitle,
+          isFormSession
         }
-      });
-    }
+
+        const requestOptions = {
+          method: "POST",
+          body: JSON.stringify(payload),
+        };
+
+        if (this.isSessionAPIInProgress) return;
+
+        this.isSessionAPIInProgress = true
+        const response = await fetch(url, requestOptions);
+        const data = await response.json();
+        this.isSessionAPIInProgress = false
+
+        if (data) {
+          console.info("record saved =>");
+          clearStore();
+        }
+
+      }
+    });
   }
 
   App.TraekAnalytics.prototype.captureHeatmaps = function () {
@@ -621,7 +616,7 @@
           form.onsubmit = function (e) {
             formSubmitted(e, form, _this, () => {
               uploadVisitorRecords(_this.hostUrl);
-              saveSessionRecording(_this, true);
+              this.saveSessionRecording(true);
             });
           };
         });
@@ -711,9 +706,13 @@
       const traekRRWebScript = document.createElement("script");
       traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
 
+      const _this = this;
       traekRRWebScript.onload = async () => {
-        if (this.allowSessionRecord) {
-          await this.recordSessions();
+        if (_this.allowSessionRecord) {
+          await _this.recordSessions();
+          setInterval(() => {
+            this.saveSessionRecording();
+          }, 10000);
         }
       };
       document.head.appendChild(traekRRWebScript);
@@ -742,7 +741,7 @@
               this.callTrackingApi();
             }
             if (document.visibilityState === "hidden") {
-              saveSessionRecording(this);
+              this.saveSessionRecording();
               this.allowSessionRecord = false;
             } else {
               this.allowSessionRecord = true;
@@ -752,7 +751,7 @@
             this.saveHeatmap();
             this.callTrackingApi();
             this.callApi = false;
-            saveSessionRecording(this);
+            this.saveSessionRecording();
             console.info('before unload');
           });
           const observer = new MutationObserver(() => {
