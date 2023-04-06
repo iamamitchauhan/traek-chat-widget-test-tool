@@ -201,7 +201,7 @@
       }
 
     } catch (error) {
-      console.info('sequentialCall error =>', error);
+      console.info('sequentialCall `error =>', error);
     }
 
     clearStore();
