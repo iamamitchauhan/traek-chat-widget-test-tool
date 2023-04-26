@@ -188,15 +188,11 @@
   };
 
   App.TraekAnalytics.prototype.saveSessionRecording = function (isFormSession = false) {
-
-    console.info('isFormSession =>', isFormSession);
     const { propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle } = this;
 
     //get data
-    console.info("call saveSessionRecording function ==================", this.userKey);
 
     getAll(async (events) => {
-      console.info('events =>', events);
       if (events?.length > 0) {
         const url = hostUrl + "/api/session-recording";
         const payload = {
@@ -209,7 +205,7 @@
           pageUrl,
           page: pageTitle,
           isFormSession
-        }
+        };
 
         const requestOptions = {
           method: "POST",
@@ -218,19 +214,17 @@
 
         if (this.isSessionAPIInProgress) return;
 
-        this.isSessionAPIInProgress = true
+        this.isSessionAPIInProgress = true;
         const response = await fetch(url, requestOptions);
         const data = await response.json();
-        this.isSessionAPIInProgress = false
+        this.isSessionAPIInProgress = false;
 
         if (data) {
-          console.info("record saved =>");
           clearStore();
         }
-
       }
     });
-  }
+  };
 
   App.TraekAnalytics.prototype.captureHeatmaps = function () {
     setInterval(() => {
@@ -483,7 +477,9 @@
           localStorage.setItem("visitors", JSON.stringify(visitors));
         } else if (isFormSubmitted && this.type === "isp") {
           // if form submitted and type is ISP send this payload for visitor history
-          navigator.sendBeacon(hostUrl, JSON.stringify({ visits: [payload], isBulkLeads: true }));
+          setTimeout(() => {
+            navigator.sendBeacon(hostUrl, JSON.stringify({ visits: [payload], isBulkLeads: true }));
+          }, 100);
         } else {
           navigator.sendBeacon(hostUrl, JSON.stringify(payload));
         }
@@ -510,6 +506,7 @@
         "amex",
         "cc-num",
         "cc-number",
+        "g-recaptcha-response",
       ];
       try {
         let forms = document.querySelectorAll("form");
@@ -562,8 +559,10 @@
             };
 
             if (tag === "TEXTAREA") {
-              elementObject.value = element.value;
-              formData.elements.push(elementObject);
+              if (label !== "g-recaptcha-response" && name !== "g-recaptcha-response") {
+                elementObject.value = element.value;
+                formData.elements.push(elementObject);
+              }
             } else if (tag === "SELECT") {
               for (const option of element.selectedOptions) {
                 if (!elementObject.value) {
@@ -616,7 +615,7 @@
           form.onsubmit = function (e) {
             formSubmitted(e, form, _this, () => {
               uploadVisitorRecords(_this.hostUrl);
-              this.saveSessionRecording(true);
+              _this.saveSessionRecording(true);
             });
           };
         });
@@ -628,6 +627,7 @@
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
     const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
+    if (this.userAgent.match(/bot|spider|crawler|headlesschrome|phantomjs|bingpreview/i)) return;
 
     if (!eventStateObj) {
       const eventState = {
@@ -706,10 +706,10 @@
       const traekRRWebScript = document.createElement("script");
       traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
 
-      const _this = this;
       traekRRWebScript.onload = async () => {
-        if (_this.allowSessionRecord) {
-          await _this.recordSessions();
+        if (this.allowSessionRecord) {
+          await this.recordSessions();
+
           setInterval(() => {
             this.saveSessionRecording();
           }, 10000);
@@ -752,18 +752,19 @@
             this.callTrackingApi();
             this.callApi = false;
             this.saveSessionRecording();
-            console.info('before unload');
+            console.info("before unload");
           });
           const observer = new MutationObserver(() => {
             const currentUrl = document.URL.replace(/\/$/, "");
+            console.info('this.pageUrl =>', this.pageUrl, currentUrl);
             if (this.pageUrl !== currentUrl) {
-              this.saveHeatmap();
-              this.callTrackingApi();
               this.pageUrl = currentUrl;
               this.pageTitle = document.title;
               this.visitedTime = new Date();
               this.newVisit = true;
               this.callFeedsApi();
+              this.callTrackingApi();
+              this.saveHeatmap();
               setTimeout(() => {
                 this.trackForms();
               }, 2000);
