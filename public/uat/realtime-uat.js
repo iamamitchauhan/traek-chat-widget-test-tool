@@ -238,6 +238,10 @@ let traekChatCss = `
     this.traekChatBox?.contentWindow?.postMessage({ target: "traekAnalytics", action: "chatBoxOpened" }, "*");
     this.hideNotification();
   };
+  App.realtimeCommunicationLayer.prototype.pageChangeHandler = function (newURL, newPageTitle) {
+    this.traekChatBox?.contentWindow?.postMessage({ target: "traekAnalytics", action: "pageChanged", newURL, newPageTitle }, "*");
+    this.hideNotification();
+  };
 
   App.realtimeCommunicationLayer.prototype.showNotification = function () {
     this.traekChatNotification?.classList.remove("traek-hide-element");
@@ -256,6 +260,7 @@ let traekChatCss = `
     let traekChatIconIframe = document.createElement("iframe");
     traekChatIconIframe.src = this.cdnUrl + "/traek-chat-icon-uat.html";
     traekChatIconIframe.id = "traek-chat-icon-iframe";
+    traekChatIconIframe.title = "Traek Chat Icon";
     traekChatIconIframe.classList.add("traekChatIconIframeCss", "traek-hide-element");
 
     let traekChatBoxIframe = document.createElement("iframe");
@@ -325,6 +330,14 @@ let traekChatCss = `
                 },
                 "*"
               );
+              const observer = new MutationObserver(() => {
+                this.pageChangeHandler(document.URL, document.title);
+              });
+
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+              });
               break;
             case "getObject":
               this.traekChatBox?.contentWindow?.postMessage(

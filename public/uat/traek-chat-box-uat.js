@@ -7,8 +7,8 @@ window.addEventListener(
       (function (App) {
         App.RealtimeAnalytics = function () {
           const traek = JSON.parse(data.traekObject);
-          this.unsubscribeChat = () => { };
-          this.unsubscribeUser = () => { };
+          this.unsubscribeChat = () => {};
+          this.unsubscribeUser = () => {};
           this.hostUrl = traek.hostUrl;
           this.cdnUrl = traek.cdnUrl;
           this.propertyId = traek.propertyId;
@@ -21,6 +21,7 @@ window.addEventListener(
           this.userAgent = traek.userAgent;
           this.sessionKey = traek.sessionKey;
           this.chatWidget = traek.chatWidget || {};
+          this.firebaseAccessToken = traek.firebaseAccessToken;
           this.firebase;
           this.userTypingStatusInterval;
           this.initiated = false;
@@ -40,11 +41,11 @@ window.addEventListener(
           this.companyLogo = "https://assets.traek.io/chat-icon-dark.png";
           this.headerContent = "Please fill out the form below for Sid to start helping you.";
           this.supportMessageContent = "I am here to help.";
-          this.headerBackgroundColor = "#6a7bff";
+          this.headerBackgroundColor = "#02203d";
           this.headerTextColor = "#FFFFFF";
-          this.agentMessageBackground = "#FFFFFF";
-          this.agentText = "#4b5563";
-          this.visitorMessageBackground = "#6A7BFF";
+          this.agentMessageBackground = "#f5f5f5";
+          this.agentText = "#020619";
+          this.visitorMessageBackground = "#4194e6";
           this.visitorText = "#FFFFFF";
           this.navigationUpdated = false;
           this.firebaseConfig = {
@@ -132,12 +133,25 @@ window.addEventListener(
           clearInterval(this.intervalId);
         };
 
+        App.RealtimeAnalytics.prototype.pageChangeHandler = function (newURL, newPageTitle) {
+          if (this.currentPage !== newPageTitle) {
+            this.currentPageUrl = newURL;
+            this.currentPageTitle = newPageTitle;
+            this.setUserStatus({ status: "active" });
+          }
+        };
+
         App.RealtimeAnalytics.prototype.init = function () {
-          this.initiateFirebase();
           this.addStyling();
           this.addEmojiPicker();
           this.setUserStatus({ status: "active" });
+          this.startRealtimeTraeking();
 
+          const eventState = {
+            isFormSubmitted: false,
+          };
+
+          localStorage.setItem("eventState", JSON.stringify(eventState));
           window.addEventListener("message", ({ data }) => {
             if (data?.target === "traekAnalytics") {
               switch (data.action) {
@@ -146,6 +160,9 @@ window.addEventListener(
                   break;
                 case "chatBoxOpened":
                   this.chatBoxOpened();
+                  break;
+                case "pageChanged":
+                  this.pageChangeHandler(data.newURL, data.newPageTitle);
                   break;
                 default:
                   break;
@@ -198,7 +215,7 @@ window.addEventListener(
                 googleFirebaseFirestoreCDN.src = "https://www.gstatic.com/firebasejs/8.7.1/firebase-firestore.js";
                 document.head.appendChild(googleFirebaseFirestoreCDN);
                 googleFirebaseFirestoreCDN.onload = () => {
-                  this.startRealtimeTraeking();
+                  this.init();
                 };
               };
             };
@@ -274,7 +291,7 @@ window.addEventListener(
           this.firebase = firebase.initializeApp(this.firebaseConfig);
           await this.firebase
             .auth()
-            .signInAnonymously()
+            .signInWithCustomToken(this.firebaseAccessToken)
             .then(() => {
               parent.postMessage({ target: "traekAnalytics", action: "chatLoaded" }, "*");
               this.unsubscribeUser();
@@ -289,13 +306,14 @@ window.addEventListener(
                     let typingIndicator = document.querySelector("#typing");
                     if (typingIndicator) {
                       if (typing?.server?.typing === true) {
-                        typingIndicator.classList.remove("hide");
                         const setUserTyping = () => {
                           let ts = typing?.server?.timeStamp || {};
                           let currentTs = new Date().getTime();
                           let lastTypedTs = (ts.seconds || 0) * 1000;
                           let difference = currentTs - lastTypedTs;
-                          if (difference > 4000) {
+                          if (difference < 4000) {
+                            typingIndicator.classList.remove("hide");
+                          } else {
                             typingIndicator.classList.add("hide");
                             clearInterval(this.userTypingStatusInterval);
                           }
@@ -348,10 +366,8 @@ window.addEventListener(
                 </div>
                 </div>`;
                     document.querySelector("#traek-main-content").innerHTML = `<div class="chat-box-body">
-                  <div class="chat-box-overlay"></div>
-                  <div id="chatLogs" class="chat-logs">
-                  </div>
-                  <div
+                    <div id="typing" class="typing hide">Typing...</div>
+                    <div
                     id="imagePreview"
                     style="
                       display: none;
@@ -360,7 +376,8 @@ window.addEventListener(
                       margin-top: 20px;
                     "
                   ></div>
-                  <div id="typing" class="typing hide">Typing...</div>
+                  <div id="chatLogs" class="chat-logs">
+                  </div> 
                   </div>
                 <div class="chat-input-wrap chat-msg-input-box">
                   <form name="updateChatFunction">
@@ -529,10 +546,11 @@ window.addEventListener(
                                   Start Chat
                               </button>
                               </form>
-                              ${this.chatWidget.chat_initiation
-                        ? `<div class="skip-div"><label data-i18n-key-innertext="skip-chat-initiation" class="skip-button" name="onSkipHandler">Skip</label></div>`
-                        : ""
-                      }
+                              ${
+                                this.chatWidget.chat_initiation
+                                  ? `<div class="skip-div"><label data-i18n-key-innertext="skip-chat-initiation" class="skip-button" name="onSkipHandler">Skip</label></div>`
+                                  : ""
+                              }
                       </div>
                   </div>
                   <div style="background: #F8F9FF;color: #4f4f4f;font-size: 12px;text-align: center;padding: 8px 0; position: absolute; width:100%; bottom: 0; left: 0; display: flex; justify-content: center; align-items: center;">
@@ -972,7 +990,7 @@ window.addEventListener(
           }
         };
       })(Traek);
-      new Traek.RealtimeAnalytics().init();
+      new Traek.RealtimeAnalytics().initiateFirebase();
     }
   },
   false
