@@ -194,7 +194,6 @@ const isLive = !window.location.origin.includes("localhost");
     const { propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle } = this;
 
     //get data
-    console.info("call saveSessionRecording function ==================2", this.userKey);
 
     getAll(async (events) => {
       if (events?.length > 0) {
@@ -216,16 +215,12 @@ const isLive = !window.location.origin.includes("localhost");
           body: JSON.stringify(payload),
         };
 
-        if (this.isSessionAPIInProgress) return;
+        // if (this.isSessionAPIInProgress) return;
 
-        this.isSessionAPIInProgress = true;
-        const response = await fetch(url, requestOptions);
-        const data = await response.json();
-        this.isSessionAPIInProgress = false;
-
-        if (data) {
-          clearStore();
-        }
+        // this.isSessionAPIInProgress = true;
+        fetch(url, requestOptions);
+        clearStore();
+        // this.isSessionAPIInProgress = false;
       }
     });
   };
@@ -837,4 +832,5 @@ const isLive = !window.location.origin.includes("localhost");
 const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
 
 const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
+
 const traek = new Traek.TraekAnalytics(apiKey, hostUrl, `${window.location.origin}/uat`).trackUserData();

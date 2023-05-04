@@ -20,7 +20,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "deploy:prod": "cp .env.prod .env && npm run build && firebase deploy -P prod",
+    "deploy:uat": "cp .env.uat .env && npm run build &&  firebase deploy -P uat"
   },
   "eslintConfig": {
     "extends": "react-app"
