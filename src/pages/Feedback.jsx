@@ -9,7 +9,7 @@ const Feedback = () => {
     <div>
       <h1 className='text-center'>Feedback</h1>
       <div className='align-items-center d-flex justify-content-center'>
-        <form className="needs-validation">
+        <form className="needs-validation" onSubmit={(e) => e.preventDefault()}>
           <div className="form-row">
             <div className="col-md-6">
               <label htmlFor="validationCustom01">First name</label>

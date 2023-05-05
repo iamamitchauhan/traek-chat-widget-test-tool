@@ -18,11 +18,11 @@
     "predeploy": "npm run build",
     "push": "git add ./ && git commit -m 'changes in script' && git push",
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "react-scripts --openssl-legacy-provider build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "deploy:prod": "cp .env.prod .env && npm run build && firebase deploy -P prod",
-    "deploy:uat": "cp .env.uat .env && npm run build &&  firebase deploy -P uat"
+    "deploy:uat": "cp .env.uat .env && npm run build && firebase deploy -P uat"
   },
   "eslintConfig": {
     "extends": "react-app"

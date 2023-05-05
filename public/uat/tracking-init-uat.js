@@ -1,4 +1,3 @@
-
 const isLive = !window.location.origin.includes("localhost");
 
 (function () {
@@ -69,6 +68,7 @@ const isLive = !window.location.origin.includes("localhost");
     this.heatmapData = {};
     this.apiKey = apiKey;
     this.allowLeads = false;
+    this.allowSession = false;
     this.allowForms = false;
     this.type = "";
     this.userKey = localStorage.getItem("traek_user_key");
@@ -221,6 +221,7 @@ const isLive = !window.location.origin.includes("localhost");
         fetch(url, requestOptions);
         clearStore();
         // this.isSessionAPIInProgress = false;
+
       }
     });
   };
@@ -628,10 +629,6 @@ const isLive = !window.location.origin.includes("localhost");
   };
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
-
-
-
-
     const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
 
     if (this.userAgent.match(/bot|spider|crawler|headlesschrome|phantomjs|bingpreview/i)) return;
@@ -691,7 +688,7 @@ const isLive = !window.location.origin.includes("localhost");
         propertyData = response;
       }
 
-      const { realtime, property_id, verified, shouldAllowLead, chat_widget, forms, website_url, type, heatmaps, firebaseAccessToken } =
+      const { realtime, property_id, verified, shouldAllowLead, shouldAllowSession, chat_widget, forms, website_url, type, heatmaps, firebaseAccessToken } =
         JSON.parse(propertyData);
 
       Object.assign(this, {
@@ -717,9 +714,13 @@ const isLive = !window.location.origin.includes("localhost");
         if (this.allowSessionRecord) {
           await this.recordSessions();
 
-          setInterval(() => {
-            this.saveSessionRecording();
-          }, 10000);
+          if (this.allowSession) {
+            setInterval(() => {
+              this.saveSessionRecording();
+            }, 10000);
+          } else {
+            console.info('this.allowSession ,interval cancelled');
+          }
         }
       };
       document.head.appendChild(traekRRWebScript);
@@ -732,6 +733,7 @@ const isLive = !window.location.origin.includes("localhost");
 
       if (property_id && verified === true) {
         this.allowLeads = shouldAllowLead;
+        this.allowSession = shouldAllowSession;
         this.callFeedsApi();
         this.trackForms();
         if (realtime) {
@@ -765,7 +767,7 @@ const isLive = !window.location.origin.includes("localhost");
             this.saveSessionRecording();
           });
 
-          const observer = new MutationObserver((ddd) => {
+          const observer = new MutationObserver(() => {
             let pageTitle = document.title
 
             const currentUrl = document.URL.replace(/\/$/, "");
@@ -825,12 +827,18 @@ const isLive = !window.location.origin.includes("localhost");
     }
   };
 })(Traek);
-// const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
-
-// const traek = new Traek.TraekAnalytics(apiKey, "https://uat-app.traek.io", "https://assets.traek.io").trackUserData();
-
 const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
 
-const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
 
-const traek = new Traek.TraekAnalytics(apiKey, hostUrl, `${window.location.origin}/uat`).trackUserData();
+// console.info('isLive =>', isLive);
+// const traek = new Traek.TraekAnalytics(apiKey, "https://uat-app.traek.io", "https://assets.traek.io").trackUserData();
+
+
+
+const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
+const assets = isLive ? "https://assets.traek.io" : `${window.location.origin}/uat`;
+
+console.info('assets =>', assets);
+console.info('hostUrl =>', hostUrl);
+
+const traek = new Traek.TraekAnalytics(apiKey, hostUrl, assets).trackUserData();
