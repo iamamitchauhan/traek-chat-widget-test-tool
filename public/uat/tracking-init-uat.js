@@ -94,6 +94,43 @@ const isLive = !window.location.origin.includes("localhost");
     this.isSessionAPIInProgress = false;
   };
 
+  // add into session
+  App.TraekAnalytics.prototype.sessionSet = function (key, value, expirationInMin = 30) {
+    let expirationDate = new Date(new Date().getTime() + (60000 * expirationInMin))
+    let newValue = {
+      value,
+      expirationDate: expirationDate.toISOString()
+    }
+
+    this.sessionKey = value
+    window.sessionStorage.setItem("SESSION_KEY", value);
+    window.sessionStorage.setItem(key, JSON.stringify(newValue))
+  }
+
+  // get from session (if the value expired it is destroyed)
+  App.TraekAnalytics.prototype.sessionGet = async function (key) {
+    let stringValue = window.sessionStorage.getItem(key)
+    if (stringValue !== null) {
+      let value = JSON.parse(stringValue)
+      let expirationDate = new Date(value.expirationDate)
+      if (expirationDate > new Date()) {
+        return value.value
+      } else {
+
+        return fetch(this.hostUrl + "/api/generaterandomkey")
+          .then((data) => data.json())
+          .then(({ key }) => {
+            this.sessionSet("SESSION_KEY_OBJ", key);
+            return key;
+          })
+          .catch((error) => {
+            console.error("generateKey", error.message);
+          });
+      }
+    }
+    return null
+  }
+
   // This works on all devices/browsers, and uses IndexedDBShim as a final fallback
   var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
   var baseName = "TRT";
@@ -186,6 +223,7 @@ const isLive = !window.location.origin.includes("localhost");
         },
         ignoreClasses: ["owl-dot", "owl-item", ""],
         recordCanvas: true,
+        inlineStylesheet: true,
       });
     }
   };
@@ -412,16 +450,18 @@ const isLive = !window.location.origin.includes("localhost");
     localStorage.setItem("visitors", JSON.stringify([]));
   }
 
-  App.TraekAnalytics.prototype.callFeedsApi = function () {
+  App.TraekAnalytics.prototype.callFeedsApi = async function () {
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
+
+    const sessionKey = await this.sessionGet("SESSION_KEY_OBJ")
 
     const payload = {
       propertyId: this.propertyId,
       pageTitle: this.pageTitle,
       pageUrl: this.pageUrl,
       referrer: this.referrer,
-      sessionKey: this.sessionKey,
+      sessionKey,
       ip: this.ip,
       userKey: this.userKey,
     }
@@ -437,10 +477,12 @@ const isLive = !window.location.origin.includes("localhost");
   };
 
   // add leads to table on tab change/close, page change
-  App.TraekAnalytics.prototype.callTrackingApi = function () {
+  App.TraekAnalytics.prototype.callTrackingApi = async function () {
+    const sessionKey = await this.sessionGet("SESSION_KEY_OBJ")
+
     try {
       const hostUrl = this.hostUrl + "/api/trackdata";
-      setTimeout(() => {
+      setTimeout(async () => {
         if (this.allowLeads && this.callApi) {
           //check local event state
           const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
@@ -452,7 +494,7 @@ const isLive = !window.location.origin.includes("localhost");
             pageTitle: this.pageTitle,
             pageUrl: this.pageUrl,
             referrer: this.referrer,
-            sessionKey: this.sessionKey,
+            sessionKey,
             ip: this.ip,
             userKey: this.userKey,
             userAgent: this.userAgent,
@@ -464,7 +506,7 @@ const isLive = !window.location.origin.includes("localhost");
             const index = visitors.findIndex((visit) => {
               return (
                 visit.propertyId === this.propertyId &&
-                visit.sessionKey === this.sessionKey &&
+                visit.sessionKey === sessionKey &&
                 visit.pageUrl === this.pageUrl &&
                 visit.userKey === this.userKey
               );
@@ -650,6 +692,7 @@ const isLive = !window.location.origin.includes("localhost");
     if (!this.sessionKey) {
       let sessionKey = await this.generateKey();
       sessionStorage.setItem("SESSION_KEY", sessionKey);
+      this.sessionSet("SESSION_KEY_OBJ", sessionKey)
       this.sessionKey = sessionKey;
 
       const eventState = {
@@ -744,7 +787,9 @@ const isLive = !window.location.origin.includes("localhost");
           document.head.appendChild(realtimeSctipt);
         }
 
-        if (this.propertyId && this.userKey && this.sessionKey && this.ip) {
+        const sessionKey = await this.sessionGet("SESSION_KEY_OBJ")
+
+        if (this.propertyId && this.userKey && sessionKey && this.ip) {
 
           window.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
@@ -827,13 +872,10 @@ const isLive = !window.location.origin.includes("localhost");
     }
   };
 })(Traek);
+
+
+
 const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
-
-
-// console.info('isLive =>', isLive);
-// const traek = new Traek.TraekAnalytics(apiKey, "https://uat-app.traek.io", "https://assets.traek.io").trackUserData();
-
-
 
 const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
 const assets = isLive ? "https://assets.traek.io" : `${window.location.origin}/uat`;
