@@ -1,6 +1,9 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 
 const Feedback = () => {
+
+  const [showPassword, setShowPassword] = useState(false)
+
   useEffect(() => {
     document.title = "Feedback"
   }, [])
@@ -24,6 +27,13 @@ const Feedback = () => {
             <div className="col-md-12 mb-3">
               <label htmlFor="validationCustom03">Email</label>
               <input type="email" className="form-control" id="validationCustom03" placeholder="Email Address" />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="col-md-12 mb-3">
+              <label htmlFor="validationCustom04">Password</label>
+              <input type={showPassword ? "text" : "password"} className="form-control" id="validationCustom04" placeholder="Password" />
+              <button onClick={() => setShowPassword(prev => !prev)}>{showPassword ? "Hide" : "Show"}</button>
             </div>
           </div>
           <div className="form-group">

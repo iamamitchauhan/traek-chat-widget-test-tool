@@ -103,6 +103,8 @@ const isLive = !window.location.origin.includes("localhost");
     }
 
     this.sessionKey = value
+    // // clear indexDB store on new Session create
+    clearStore();
     window.sessionStorage.setItem("SESSION_KEY", value);
     window.sessionStorage.setItem(key, JSON.stringify(newValue))
   }
@@ -117,15 +119,10 @@ const isLive = !window.location.origin.includes("localhost");
         return value.value
       } else {
 
-        return fetch(this.hostUrl + "/api/generaterandomkey")
-          .then((data) => data.json())
-          .then(({ key }) => {
-            this.sessionSet("SESSION_KEY_OBJ", key);
-            return key;
-          })
-          .catch((error) => {
-            console.error("generateKey", error.message);
-          });
+
+        const sessionKey = await this.generateKey();
+
+        this.sessionSet("SESSION_KEY_OBJ", sessionKey);
       }
     }
     return null
@@ -221,45 +218,67 @@ const isLive = !window.location.origin.includes("localhost");
             console.error("rrwebRecord error =>", error);
           }
         },
-        ignoreClasses: ["owl-dot", "owl-item", ""],
         recordCanvas: true,
         inlineStylesheet: true,
+        recordCrossOriginIframes: true,
+        inlineImages: true,
+        sampling: {
+          // do not record mouse movement
+          // mousemove: false,
+          // do not record mouse interaction
+          // mouseInteraction: false,
+          // set the interval of scrolling event
+          // scroll: 150, // do not emit twice in 150ms
+          // set the interval of media interaction event
+          // media: 800,
+          // set the timing of record input
+          input: 'last', // When input mulitple characters, only record the final input
+        }
       });
     }
   };
 
-  App.TraekAnalytics.prototype.saveSessionRecording = function (isFormSession = false) {
+  App.TraekAnalytics.prototype.saveSessionRecording = async function (isFormSession = false) {
+    await this.sessionGet("SESSION_KEY_OBJ")
+
     const { propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle } = this;
 
     //get data
 
     getAll(async (events) => {
-      if (events?.length > 0) {
-        const url = hostUrl + "/api/session-recording";
-        const payload = {
-          data: events,
-          propertyId,
-          userKey,
-          sessionKey,
-          ip,
-          userAgent,
-          pageUrl,
-          page: pageTitle,
-          isFormSession
-        };
+      const isExistsSnapshotSession = localStorage.getItem("isSnapshotCaptured") === "true"
+      const isExistsSnapshotObject = events.findIndex(({ type }) => type === 4);
 
-        const requestOptions = {
-          method: "POST",
-          body: JSON.stringify(payload),
-        };
+      if (isExistsSnapshotSession || isExistsSnapshotObject >= 0) {
+        if (events?.length > 0) {
+          const url = hostUrl + "/api/session-recording";
+          const payload = {
+            data: events,
+            propertyId,
+            userKey,
+            sessionKey,
+            ip,
+            userAgent,
+            pageUrl,
+            page: pageTitle,
+            isFormSession
+          };
 
-        // if (this.isSessionAPIInProgress) return;
+          const requestOptions = {
+            method: "POST",
+            body: JSON.stringify(payload),
+          };
 
-        // this.isSessionAPIInProgress = true;
-        fetch(url, requestOptions);
-        clearStore();
-        // this.isSessionAPIInProgress = false;
+          fetch(url, requestOptions);
+          clearStore();
 
+          localStorage.setItem("isSnapshotCaptured", "true")
+
+        }
+      } else {
+        localStorage.setItem("isSnapshotCaptured", "false");
+        console.info('Session recording has no snapshot object, restart recording');
+        this.recordSessions();
       }
     });
   };
@@ -552,6 +571,7 @@ const isLive = !window.location.origin.includes("localhost");
         "cc-num",
         "cc-number",
         "g-recaptcha-response",
+        "recaptcha"
       ];
       try {
         let forms = document.querySelectorAll("form");
@@ -617,34 +637,38 @@ const isLive = !window.location.origin.includes("localhost");
               }
               formData.elements.push(elementObject);
             } else if (tag === "INPUT") {
-              switch (type) {
-                case "radio":
-                  if (element.checked) {
-                    elementObject.value = element.value;
-                    formData.elements.push(elementObject);
-                  }
-                  break;
-                case "checkbox":
-                  if (element.checked) {
-                    let checkIndex = formData.elements.findIndex((element) => element.type === type && element.name === name);
-                    if (checkIndex === -1) {
-                      elementObject.value = [];
-                      elementObject.value.push(element.value);
+              const excludedValues = ["g-recaptcha-response", "recaptcha"];
+
+              if (!excludedValues.includes(label) && !excludedValues.includes(name)) {
+                switch (type) {
+                  case "radio":
+                    if (element.checked) {
+                      elementObject.value = element.value;
                       formData.elements.push(elementObject);
-                    } else {
-                      elementObject = formData.elements[checkIndex];
-                      elementObject.value.push(element.value);
-                      formData.elements[checkIndex] = elementObject;
                     }
-                  }
-                  break;
-                default:
-                  if (!ignore.find((val) => val === type)) {
-                    elementObject.value = element.value;
-                    formData.elements.push(elementObject);
-                    checkRequiredOrEmpty(element.value);
-                  }
-                  break;
+                    break;
+                  case "checkbox":
+                    if (element.checked) {
+                      let checkIndex = formData.elements.findIndex((element) => element.type === type && element.name === name);
+                      if (checkIndex === -1) {
+                        elementObject.value = [];
+                        elementObject.value.push(element.value);
+                        formData.elements.push(elementObject);
+                      } else {
+                        elementObject = formData.elements[checkIndex];
+                        elementObject.value.push(element.value);
+                        formData.elements[checkIndex] = elementObject;
+                      }
+                    }
+                    break;
+                  default:
+                    if (!ignore.find((val) => val === type)) {
+                      elementObject.value = element.value;
+                      formData.elements.push(elementObject);
+                      checkRequiredOrEmpty(element.value);
+                    }
+                    break;
+                }
               }
             }
           }
@@ -701,7 +725,6 @@ const isLive = !window.location.origin.includes("localhost");
 
       // clear event state and session records on new session
       localStorage.setItem("eventState", JSON.stringify(eventState));
-      clearStore();
     }
 
     if (!this.ip) {
@@ -872,7 +895,6 @@ const isLive = !window.location.origin.includes("localhost");
     }
   };
 })(Traek);
-
 
 
 const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
