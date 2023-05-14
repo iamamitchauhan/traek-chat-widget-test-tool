@@ -111,15 +111,16 @@ const isLive = !window.location.origin.includes("localhost");
 
   // get from session (if the value expired it is destroyed)
   App.TraekAnalytics.prototype.sessionGet = async function (key) {
-    let stringValue = window.sessionStorage.getItem(key)
+    const stringValue = window.sessionStorage.getItem(key)
+
     if (stringValue !== null) {
-      let value = JSON.parse(stringValue)
-      let expirationDate = new Date(value.expirationDate)
-      if (expirationDate > new Date()) {
+      const value = JSON.parse(stringValue)
+      const expirationDate = new Date(value.expirationDate)
+
+      console.info('value.value =>', value.value);
+      if (typeof value.value !== "undefined" && expirationDate > new Date()) {
         return value.value
       } else {
-
-
         const sessionKey = await this.generateKey();
 
         this.sessionSet("SESSION_KEY_OBJ", sessionKey);
@@ -210,10 +211,9 @@ const isLive = !window.location.origin.includes("localhost");
     if (typeof rrwebRecord !== "undefined") {
       rrwebRecord({
         emit(event) {
+          console.info('event =>', event);
           try {
-            if (event) {
-              add(event);
-            }
+            add(event);
           } catch (error) {
             console.error("rrwebRecord error =>", error);
           }
@@ -246,10 +246,15 @@ const isLive = !window.location.origin.includes("localhost");
     //get data
 
     getAll(async (events) => {
-      const isExistsSnapshotSession = localStorage.getItem("isSnapshotCaptured") === "true"
-      const isExistsSnapshotObject = events.findIndex(({ type }) => type === 4);
+      const isExistsSession = localStorage.getItem("isSnapshotCaptured") === "true"
+      const isExistsObject = events.findIndex(({ type }) => type === 4);
 
-      if (isExistsSnapshotSession || isExistsSnapshotObject >= 0) {
+      // console.info('saveSessionRecording =>', { isExistsSession, isExistsObject: isExistsObject >= 0 ? "Exists" : "Not available" });
+
+      // console.info('events =>', events);
+
+      if (isExistsSession || isExistsObject >= 0) {
+        console.info('saveSessionRecording API CALL FOR SESSION API');
         if (events?.length > 0) {
           const url = hostUrl + "/api/session-recording";
           const payload = {
@@ -277,7 +282,7 @@ const isLive = !window.location.origin.includes("localhost");
         }
       } else {
         localStorage.setItem("isSnapshotCaptured", "false");
-        console.info('Session recording has no snapshot object, restart recording');
+        console.info('saveSessionRecording SESSION RECORDING HAS NO SNAPSHOT OBJECT, RESTART RECORDING');
         this.recordSessions();
       }
     });
@@ -783,7 +788,7 @@ const isLive = !window.location.origin.includes("localhost");
           if (this.allowSession) {
             setInterval(() => {
               this.saveSessionRecording();
-            }, 10000);
+            }, 5000);
           } else {
             console.info('this.allowSession ,interval cancelled');
           }
