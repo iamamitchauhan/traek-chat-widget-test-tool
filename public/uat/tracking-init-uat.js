@@ -105,6 +105,8 @@ const isLive = !window.location.origin.includes("localhost");
     this.sessionKey = value
     // // clear indexDB store on new Session create
     clearStore();
+
+    window.sessionStorage.setItem("isSnapshotCaptured", "false");
     window.sessionStorage.setItem("SESSION_KEY", value);
     window.sessionStorage.setItem(key, JSON.stringify(newValue))
   }
@@ -246,7 +248,8 @@ const isLive = !window.location.origin.includes("localhost");
     //get data
 
     getAll(async (events) => {
-      const isExistsSnapshotSession = localStorage.getItem("isSnapshotCaptured") === "true"
+      const isExistsSnapshotSession = window.sessionStorage.getItem("isSnapshotCaptured") === "true"
+
       const isExistsSnapshotObject = events.findIndex(({ type }) => type === 4);
 
       if (isExistsSnapshotSession || isExistsSnapshotObject >= 0) {
@@ -272,11 +275,11 @@ const isLive = !window.location.origin.includes("localhost");
           fetch(url, requestOptions);
           clearStore();
 
-          localStorage.setItem("isSnapshotCaptured", "true")
+          window.sessionStorage.setItem("isSnapshotCaptured", "true")
 
         }
       } else {
-        localStorage.setItem("isSnapshotCaptured", "false");
+        window.sessionStorage.setItem("isSnapshotCaptured", "false");
         console.info('Session recording has no snapshot object, restart recording');
         this.recordSessions();
       }
@@ -696,6 +699,7 @@ const isLive = !window.location.origin.includes("localhost");
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
     const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
+    window.sessionStorage.setItem("isSnapshotCaptured", "false")
 
     if (this.userAgent.match(/bot|spider|crawler|headlesschrome|phantomjs|bingpreview/i)) return;
 
