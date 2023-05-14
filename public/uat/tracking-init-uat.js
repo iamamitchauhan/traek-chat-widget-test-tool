@@ -117,7 +117,6 @@ const isLive = !window.location.origin.includes("localhost");
       const value = JSON.parse(stringValue)
       const expirationDate = new Date(value.expirationDate)
 
-      console.info('value.value =>', value.value);
       if (typeof value.value !== "undefined" && expirationDate > new Date()) {
         return value.value
       } else {
@@ -211,17 +210,18 @@ const isLive = !window.location.origin.includes("localhost");
     if (typeof rrwebRecord !== "undefined") {
       rrwebRecord({
         emit(event) {
-          console.info('event =>', event);
           try {
-            add(event);
+            if (event) {
+              add(event);
+            }
           } catch (error) {
             console.error("rrwebRecord error =>", error);
           }
         },
         recordCanvas: true,
         inlineStylesheet: true,
-        recordCrossOriginIframes: true,
-        inlineImages: true,
+        // recordCrossOriginIframes: true,
+        // inlineImages: true,
         sampling: {
           // do not record mouse movement
           // mousemove: false,
@@ -246,15 +246,10 @@ const isLive = !window.location.origin.includes("localhost");
     //get data
 
     getAll(async (events) => {
-      const isExistsSession = localStorage.getItem("isSnapshotCaptured") === "true"
-      const isExistsObject = events.findIndex(({ type }) => type === 4);
+      const isExistsSnapshotSession = localStorage.getItem("isSnapshotCaptured") === "true"
+      const isExistsSnapshotObject = events.findIndex(({ type }) => type === 4);
 
-      // console.info('saveSessionRecording =>', { isExistsSession, isExistsObject: isExistsObject >= 0 ? "Exists" : "Not available" });
-
-      // console.info('events =>', events);
-
-      if (isExistsSession || isExistsObject >= 0) {
-        console.info('saveSessionRecording API CALL FOR SESSION API');
+      if (isExistsSnapshotSession || isExistsSnapshotObject >= 0) {
         if (events?.length > 0) {
           const url = hostUrl + "/api/session-recording";
           const payload = {
@@ -282,7 +277,7 @@ const isLive = !window.location.origin.includes("localhost");
         }
       } else {
         localStorage.setItem("isSnapshotCaptured", "false");
-        console.info('saveSessionRecording SESSION RECORDING HAS NO SNAPSHOT OBJECT, RESTART RECORDING');
+        console.info('Session recording has no snapshot object, restart recording');
         this.recordSessions();
       }
     });
@@ -788,7 +783,7 @@ const isLive = !window.location.origin.includes("localhost");
           if (this.allowSession) {
             setInterval(() => {
               this.saveSessionRecording();
-            }, 5000);
+            }, 10000);
           } else {
             console.info('this.allowSession ,interval cancelled');
           }
