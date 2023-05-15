@@ -94,6 +94,8 @@ const isLive = !window.location.origin.includes("localhost");
     this.isSessionAPIInProgress = false;
   };
 
+  const SAVE_RECORDING_INTERVAL_TIME = 15 * 1000 // 15 second
+
   // add into session
   App.TraekAnalytics.prototype.sessionSet = function (key, value, expirationInMin = 30) {
     let expirationDate = new Date(new Date().getTime() + (60000 * expirationInMin))
@@ -786,8 +788,9 @@ const isLive = !window.location.origin.includes("localhost");
 
           if (this.allowSession) {
             setInterval(() => {
+              console.info('SAVE_RECORDING_INTERVAL_TIME =>', SAVE_RECORDING_INTERVAL_TIME);
               this.saveSessionRecording();
-            }, 10000);
+            }, SAVE_RECORDING_INTERVAL_TIME);
           } else {
             console.info('this.allowSession ,interval cancelled');
           }
