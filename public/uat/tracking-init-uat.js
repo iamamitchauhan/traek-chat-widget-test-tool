@@ -507,22 +507,22 @@ const isLive = !window.location.origin.includes("localhost");
     try {
       const hostUrl = this.hostUrl + "/api/trackdata";
       setTimeout(async () => {
+        const payload = {
+          propertyId: this.propertyId,
+          time: new Date() - this.visitedTime,
+          pageTitle: this.pageTitle,
+          pageUrl: this.pageUrl,
+          referrer: this.referrer,
+          sessionKey,
+          ip: this.ip,
+          userKey: this.userKey,
+          userAgent: this.userAgent,
+        };
+
         if (this.allowLeads && this.callApi) {
           //check local event state
           const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
           let isFormSubmitted = eventState?.isFormSubmitted || false;
-
-          const payload = {
-            propertyId: this.propertyId,
-            time: new Date() - this.visitedTime,
-            pageTitle: this.pageTitle,
-            pageUrl: this.pageUrl,
-            referrer: this.referrer,
-            sessionKey,
-            ip: this.ip,
-            userKey: this.userKey,
-            userAgent: this.userAgent,
-          };
 
           let visitors = JSON.parse(localStorage.getItem("visitors")) || [];
           // track visitors local and submit those locally stored visitors once form submitted
@@ -551,6 +551,8 @@ const isLive = !window.location.origin.includes("localhost");
             navigator.sendBeacon(hostUrl, JSON.stringify(payload));
           }
         }
+
+        navigator.sendBeacon(hostUrl, JSON.stringify({ ...payload, isVisitor: true }));
       }, 500);
     } catch (error) {
       console.error("add leads error =>", error);
