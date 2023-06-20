@@ -67,8 +67,8 @@ const isLive = !window.location.origin.includes("localhost");
     }
     this.heatmapData = {};
     this.apiKey = apiKey;
-    this.allowLeads = false;
-    this.allowSession = false;
+    // this.allowLeads = false;
+    // this.allowSession = false;
     this.allowForms = false;
     this.type = "";
     this.userKey = localStorage.getItem("traek_user_key");
@@ -94,46 +94,59 @@ const isLive = !window.location.origin.includes("localhost");
     this.isSessionAPIInProgress = false;
   };
 
-  const SAVE_RECORDING_INTERVAL_TIME = 15 * 1000 // 15 second
+  const SAVE_RECORDING_INTERVAL_TIME = 15 * 1000; // 15 second
 
   // add into session
-  App.TraekAnalytics.prototype.sessionSet = function (key, value, expirationInMin = 30) {
-    let expirationDate = new Date(new Date().getTime() + (60000 * expirationInMin))
+  App.TraekAnalytics.prototype.sessionSet = function (
+    key,
+    value,
+    expirationInMin = 30
+  ) {
+    let expirationDate = new Date(
+      new Date().getTime() + 60000 * expirationInMin
+    );
     let newValue = {
       value,
-      expirationDate: expirationDate.toISOString()
-    }
+      expirationDate: expirationDate.toISOString(),
+    };
 
-    this.sessionKey = value
+    this.sessionKey = value;
     // // clear indexDB store on new Session create
     clearStore();
 
+    this.recordSessions();
+
     window.sessionStorage.setItem("isSnapshotCaptured", "false");
     window.sessionStorage.setItem("SESSION_KEY", value);
-    window.sessionStorage.setItem(key, JSON.stringify(newValue))
-  }
+    window.sessionStorage.setItem(key, JSON.stringify(newValue));
+  };
 
   // get from session (if the value expired it is destroyed)
   App.TraekAnalytics.prototype.sessionGet = async function (key) {
-    const stringValue = window.sessionStorage.getItem(key)
+    const stringValue = window.sessionStorage.getItem(key);
 
     if (stringValue !== null) {
-      const value = JSON.parse(stringValue)
-      const expirationDate = new Date(value.expirationDate)
+      const value = JSON.parse(stringValue);
+      const expirationDate = new Date(value.expirationDate);
 
       if (typeof value.value !== "undefined" && expirationDate > new Date()) {
-        return value.value
+        return value.value;
       } else {
         const sessionKey = await this.generateKey();
 
         this.sessionSet("SESSION_KEY_OBJ", sessionKey);
       }
     }
-    return null
-  }
+    return null;
+  };
 
   // This works on all devices/browsers, and uses IndexedDBShim as a final fallback
-  var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB || window.shimIndexedDB;
+  var indexedDB =
+    window.indexedDB ||
+    window.mozIndexedDB ||
+    window.webkitIndexedDB ||
+    window.msIndexedDB ||
+    window.shimIndexedDB;
   var baseName = "TRT";
   var storeName = "events";
 
@@ -236,21 +249,33 @@ const isLive = !window.location.origin.includes("localhost");
           // set the interval of media interaction event
           // media: 800,
           // set the timing of record input
-          input: 'last', // When input mulitple characters, only record the final input
-        }
+          input: "last", // When input mulitple characters, only record the final input
+        },
       });
     }
   };
 
-  App.TraekAnalytics.prototype.saveSessionRecording = async function (isFormSession = false) {
-    await this.sessionGet("SESSION_KEY_OBJ")
+  App.TraekAnalytics.prototype.saveSessionRecording = async function (
+    isFormSession = false
+  ) {
+    await this.sessionGet("SESSION_KEY_OBJ");
 
-    const { propertyId, userKey, sessionKey, hostUrl, ip, userAgent, pageUrl, pageTitle } = this;
+    const {
+      propertyId,
+      userKey,
+      sessionKey,
+      hostUrl,
+      ip,
+      userAgent,
+      pageUrl,
+      pageTitle,
+    } = this;
 
     //get data
 
     getAll(async (events) => {
-      const isExistsSnapshotSession = window.sessionStorage.getItem("isSnapshotCaptured") === "true"
+      const isExistsSnapshotSession =
+        window.sessionStorage.getItem("isSnapshotCaptured") === "true";
 
       const isExistsSnapshotObject = events.findIndex(({ type }) => type === 4);
 
@@ -266,7 +291,7 @@ const isLive = !window.location.origin.includes("localhost");
             userAgent,
             pageUrl,
             page: pageTitle,
-            isFormSession
+            isFormSession,
           };
 
           const requestOptions = {
@@ -277,12 +302,13 @@ const isLive = !window.location.origin.includes("localhost");
           fetch(url, requestOptions);
           clearStore();
 
-          window.sessionStorage.setItem("isSnapshotCaptured", "true")
-
+          window.sessionStorage.setItem("isSnapshotCaptured", "true");
         }
       } else {
         window.sessionStorage.setItem("isSnapshotCaptured", "false");
-        console.info('Session recording has no snapshot object, restart recording');
+        console.info(
+          "Session recording has no snapshot object, restart recording"
+        );
         this.recordSessions();
       }
     });
@@ -334,6 +360,7 @@ const isLive = !window.location.origin.includes("localhost");
       stack.splice(0, 1);
       return stack.join(" > ");
     }
+
     function getCoords(elem) {
       let box = elem.getBoundingClientRect();
       return {
@@ -350,13 +377,19 @@ const isLive = !window.location.origin.includes("localhost");
         if (!this.heatmapData.click) {
           this.heatmapData.click = [];
         }
-        this.heatmapData.click.push({
-          p: getDomPath(target),
-          x: (offsetX * 100) / clientWidth,
-          y: (offsetY * 100) / clientHeight,
-          h: window.innerHeight,
-          w: window.innerWidth,
-        });
+        if (target && target instanceof Element) {
+          const domPath = getDomPath(target);
+          let ValidDomPath = document.querySelector(domPath);
+          if (ValidDomPath) {
+            this.heatmapData.click.push({
+              p: domPath,
+              x: (offsetX * 100) / clientWidth,
+              y: (offsetY * 100) / clientHeight,
+              h: window.innerHeight,
+              w: window.innerWidth,
+            });
+          }
+        }
       },
       true
     );
@@ -417,9 +450,13 @@ const isLive = !window.location.origin.includes("localhost");
 
   App.TraekAnalytics.prototype.getUserIp = async function () {
     const getIpFromIpify = async () => {
-      const response = await fetch("https://api.ipify.org/?format=json");
-      const { ip } = await response.json();
-      return ip;
+      try {
+        const response = await fetch("https://api.ipify.org/?format=json");
+        const { ip } = await response.json();
+        return ip;
+      } catch (error) {
+        return null;
+      }
     };
 
     if (RTCPeerConnection) {
@@ -437,7 +474,9 @@ const isLive = !window.location.origin.includes("localhost");
         return await new Promise((resolve) => {
           pc.onicecandidate = (event) => {
             if (event.candidate) {
-              const match = event.candidate.candidate.match(/\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/);
+              const match = event.candidate.candidate.match(
+                /\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b/
+              );
               if (match) {
                 pc.close();
                 resolve(match[0]);
@@ -446,7 +485,7 @@ const isLive = !window.location.origin.includes("localhost");
           };
           setTimeout(() => {
             pc.close();
-            resolve(getIpFromIpify());
+            resolve(null);
           }, 5000);
         });
       } catch (e) {
@@ -457,7 +496,9 @@ const isLive = !window.location.origin.includes("localhost");
     }
   };
   App.TraekAnalytics.prototype.generateKey = function () {
-    return fetch(this.hostUrl + "/api/generaterandomkey")
+    return fetch(this.hostUrl + "/api/generaterandomkey", {
+      credentials: "same-origin",
+    })
       .then((data) => data.json())
       .then(({ key }) => key)
       .catch((error) => {
@@ -469,7 +510,10 @@ const isLive = !window.location.origin.includes("localhost");
     let visitors = JSON.parse(localStorage.getItem("visitors")) || [];
 
     const hostUrl = url + "/api/trackdata";
-    navigator.sendBeacon(hostUrl, JSON.stringify({ visits: visitors, isBulkLeads: true }));
+    navigator.sendBeacon(
+      hostUrl,
+      JSON.stringify({ visits: visitors, isBulkLeads: true })
+    );
 
     localStorage.setItem("visitors", JSON.stringify([]));
   }
@@ -478,7 +522,7 @@ const isLive = !window.location.origin.includes("localhost");
     var myHeaders = new Headers();
     myHeaders.append("Content-Type", "application/json");
 
-    const sessionKey = await this.sessionGet("SESSION_KEY_OBJ")
+    const sessionKey = await this.sessionGet("SESSION_KEY_OBJ");
 
     const payload = {
       propertyId: this.propertyId,
@@ -488,7 +532,7 @@ const isLive = !window.location.origin.includes("localhost");
       sessionKey,
       ip: this.ip,
       userKey: this.userKey,
-    }
+    };
 
     var requestOptions = {
       method: "POST",
@@ -496,13 +540,15 @@ const isLive = !window.location.origin.includes("localhost");
       body: JSON.stringify(payload),
     };
 
-    const hostUrl = isLive ? this.hostUrl : "http://localhost:3333"
-    fetch(hostUrl + "/api/leads/feeds", requestOptions).catch((error) => console.error("callFeedsApi error", error));
+    const hostUrl = isLive ? this.hostUrl : "http://localhost:3333";
+    fetch(hostUrl + "/api/leads/feeds", requestOptions).catch((error) =>
+      console.error("callFeedsApi error", error)
+    );
   };
 
   // add leads / visitor logs to table on tab change/close, page change
   App.TraekAnalytics.prototype.callTrackingApi = async function () {
-    const sessionKey = await this.sessionGet("SESSION_KEY_OBJ")
+    const sessionKey = await this.sessionGet("SESSION_KEY_OBJ");
 
     try {
       const hostUrl = this.hostUrl + "/api/trackdata";
@@ -518,42 +564,16 @@ const isLive = !window.location.origin.includes("localhost");
         userAgent: this.userAgent,
       };
 
-      if (this.allowLeads && this.callApi) {
-        //check local event state
-        // const eventState = JSON.parse(localStorage.getItem("eventState")) || null;
-        // let isFormSubmitted = eventState?.isFormSubmitted || false;
-
-        // let visitors = JSON.parse(localStorage.getItem("visitors")) || [];
-        // track visitors local and submit those locally stored visitors once form submitted
-        // if (!isFormSubmitted && this.type === "isp") {
-        //   const index = visitors.findIndex((visit) => {
-        //     return (
-        //       visit.propertyId === this.propertyId &&
-        //       visit.sessionKey === sessionKey &&
-        //       visit.pageUrl === this.pageUrl &&
-        //       visit.userKey === this.userKey
-        //     );
-        //   });
-
-        //   if (index >= 0) {
-        //     visitors[index].time += new Date() - this.visitedTime;
-        //   } else {
-        //     visitors.push(payload);
-        //   }
-        //   localStorage.setItem("visitors", JSON.stringify(visitors));
-        // } else if (isFormSubmitted && this.type === "isp") {
-        //   // if form submitted and type is ISP send this payload for visitor history
-
-        //   navigator.sendBeacon(hostUrl, JSON.stringify({ visits: [payload], isBulkLeads: true }));
-
-        // } else {
-        // }
+      if (this.callApi) {
         if (this.type !== "isp") {
           navigator.sendBeacon(hostUrl, JSON.stringify(payload));
         }
       }
 
-      navigator.sendBeacon(hostUrl, JSON.stringify({ ...payload, isVisitor: true }));
+      navigator.sendBeacon(
+        hostUrl,
+        JSON.stringify({ ...payload, isVisitor: true })
+      );
     } catch (error) {
       console.error("add leads error =>", error);
     }
@@ -561,8 +581,20 @@ const isLive = !window.location.origin.includes("localhost");
 
   App.TraekAnalytics.prototype.trackForms = function () {
     // allow form tracking if allow forms flag enabled
+    console.log("this.allowForms =>", this.allowForms);
+
     if (this.allowForms) {
-      let ignore = ["submit", "reset", "password", "file", "image", "radio", "checkbox", "button", "hidden"];
+      let ignore = [
+        "submit",
+        "reset",
+        "password",
+        "file",
+        "image",
+        "radio",
+        "checkbox",
+        "button",
+        "hidden",
+      ];
       let sensitive = [
         "credit card",
         "card number",
@@ -578,24 +610,16 @@ const isLive = !window.location.origin.includes("localhost");
         "cc-num",
         "cc-number",
         "g-recaptcha-response",
-        "recaptcha"
+        "recaptcha",
       ];
       try {
         let forms = document.querySelectorAll("form");
+
+        console.log("forms =>", forms);
+
         function formSubmitted(e, form, data, cb) {
           const formName = e.currentTarget.name.value;
           const formId = e.currentTarget.id;
-          // let eventState = JSON.parse(localStorage.getItem("eventState")) || null;
-
-          // if (eventState) {
-          //   eventState.isFormSubmitted = true;
-          // } else {
-          //   eventState = {
-          //     isFormSubmitted: true,
-          //   };
-          // }
-
-          // localStorage.setItem("eventState", JSON.stringify(eventState));
 
           let formData = {
             sessionKey: data.sessionKey,
@@ -615,7 +639,10 @@ const isLive = !window.location.origin.includes("localhost");
             let type = element.type;
             let tag = element.tagName;
             let name = element.name;
-            let label = element?.labels?.length > 0 ? element?.labels[0]?.innerText : name || "";
+            let label =
+              element?.labels?.length > 0
+                ? element?.labels[0]?.innerText
+                : name || "";
             for (let i = 0; i < sensitive.length; i++) {
               if (label.match(new RegExp(sensitive[i], ""))) {
                 continue;
@@ -631,7 +658,10 @@ const isLive = !window.location.origin.includes("localhost");
             };
 
             if (tag === "TEXTAREA") {
-              if (label !== "g-recaptcha-response" && name !== "g-recaptcha-response") {
+              if (
+                label !== "g-recaptcha-response" &&
+                name !== "g-recaptcha-response"
+              ) {
                 elementObject.value = element.value;
                 formData.elements.push(elementObject);
               }
@@ -646,7 +676,10 @@ const isLive = !window.location.origin.includes("localhost");
             } else if (tag === "INPUT") {
               const excludedValues = ["g-recaptcha-response", "recaptcha"];
 
-              if (!excludedValues.includes(label) && !excludedValues.includes(name)) {
+              if (
+                !excludedValues.includes(label) &&
+                !excludedValues.includes(name)
+              ) {
                 switch (type) {
                   case "radio":
                     if (element.checked) {
@@ -656,7 +689,10 @@ const isLive = !window.location.origin.includes("localhost");
                     break;
                   case "checkbox":
                     if (element.checked) {
-                      let checkIndex = formData.elements.findIndex((element) => element.type === type && element.name === name);
+                      let checkIndex = formData.elements.findIndex(
+                        (element) =>
+                          element.type === type && element.name === name
+                      );
                       if (checkIndex === -1) {
                         elementObject.value = [];
                         elementObject.value.push(element.value);
@@ -680,7 +716,10 @@ const isLive = !window.location.origin.includes("localhost");
             }
           }
           if (checkEmpty.every((data) => data === true)) {
-            navigator.sendBeacon(data.hostUrl + "/api/track/forms", JSON.stringify(formData));
+            navigator.sendBeacon(
+              data.hostUrl + "/api/track/forms",
+              JSON.stringify(formData)
+            );
           }
 
           cb(true);
@@ -703,17 +742,14 @@ const isLive = !window.location.origin.includes("localhost");
 
   App.TraekAnalytics.prototype.trackUserData = async function () {
     // const eventStateObj = JSON.parse(localStorage.getItem("eventState")) || null;
-    window.sessionStorage.setItem("isSnapshotCaptured", "false")
+    window.sessionStorage.setItem("isSnapshotCaptured", "false");
 
-    if (this.userAgent.match(/bot|spider|crawler|headlesschrome|phantomjs|bingpreview/i)) return;
-
-    // if (!eventStateObj) {
-    //   const eventState = {
-    //     isFormSubmitted: false,
-    //   };
-
-    //   localStorage.setItem("eventState", JSON.stringify(eventState));
-    // }
+    if (
+      this.userAgent.match(
+        /bot|spider|crawler|headlesschrome|phantomjs|bingpreview/i
+      )
+    )
+      return;
 
     if (!this.userKey) {
       let userKey = await this.generateKey();
@@ -724,15 +760,8 @@ const isLive = !window.location.origin.includes("localhost");
     if (!this.sessionKey) {
       let sessionKey = await this.generateKey();
       sessionStorage.setItem("SESSION_KEY", sessionKey);
-      this.sessionSet("SESSION_KEY_OBJ", sessionKey)
+      this.sessionSet("SESSION_KEY_OBJ", sessionKey);
       this.sessionKey = sessionKey;
-
-      // const eventState = {
-      //   isFormSubmitted: false,
-      // };
-
-      // clear event state and session records on new session
-      // localStorage.setItem("eventState", JSON.stringify(eventState));
     }
 
     if (!this.ip) {
@@ -747,30 +776,44 @@ const isLive = !window.location.origin.includes("localhost");
       let propertyData = sessionStorage.getItem("propertyData");
 
       if (!propertyData) {
-        let response = await fetch(this.hostUrl + "/api/properties/property/" + this.apiKey, {
-          method: "POST",
-          body: JSON.stringify({
-            api_key: this.apiKey,
-            ip: this.ip,
-            originUrl: this.pageUrl,
-            userKey: this.userKey,
-          }),
-        });
+        let response = await fetch(
+          this.hostUrl + "/api/properties/property/" + this.apiKey,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              api_key: this.apiKey,
+              ip: this.ip,
+              originUrl: this.pageUrl,
+              userKey: this.userKey,
+            }),
+          }
+        );
 
         response = JSON.stringify(await response.json());
         sessionStorage.setItem("propertyData", response);
         propertyData = response;
       }
 
-      const { realtime, property_id, verified, shouldAllowLead, shouldAllowSession, chat_widget, forms, website_url, type, heatmaps, firebaseAccessToken } =
-        JSON.parse(propertyData);
+      const {
+        realtime,
+        property_id,
+        verified,
+        //shouldAllowLead,
+        //shouldAllowSession,
+        chat_widget,
+        forms,
+        website_url,
+        // type,
+        heatmaps,
+        firebaseAccessToken,
+      } = JSON.parse(propertyData);
 
       Object.assign(this, {
         propertyId: property_id,
         chatWidget: chat_widget,
         websiteUrl: website_url,
         allowForms: forms,
-        type,
+        // type,
         heatmaps,
         firebaseAccessToken,
       });
@@ -780,38 +823,21 @@ const isLive = !window.location.origin.includes("localhost");
         this.captureHeatmaps();
       }
 
-      // load rrweb script
-      const traekRRWebScript = document.createElement("script");
-      traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
-
-      traekRRWebScript.onload = async () => {
-        if (this.allowSessionRecord) {
-          await this.recordSessions();
-
-          if (this.allowSession) {
-            setInterval(() => {
-              console.info('SAVE_RECORDING_INTERVAL_TIME =>', SAVE_RECORDING_INTERVAL_TIME);
-              this.saveSessionRecording();
-            }, SAVE_RECORDING_INTERVAL_TIME);
-          } else {
-            console.info('this.allowSession ,interval cancelled');
-          }
-        }
-      };
-      document.head.appendChild(traekRRWebScript);
-
-      const url = window.location !== window.parent.location ? document.referrer : document.location.href;
+      const url =
+        window.location !== window.parent.location
+          ? document.referrer
+          : document.location.href;
 
       if (url !== "https://app.traek.io/") {
         this.getElementsData();
       }
 
       if (property_id && verified === true) {
-        this.allowLeads = shouldAllowLead;
-        this.allowSession = shouldAllowSession;
+        // this.allowLeads = shouldAllowLead;
+        // this.allowSession = shouldAllowSession;
         this.callFeedsApi();
         this.trackForms();
-        this.callTrackingApi();
+        // this.callTrackingApi();
 
         if (realtime) {
           App.TraekAnalytics.currentObject = this;
@@ -821,10 +847,9 @@ const isLive = !window.location.origin.includes("localhost");
           document.head.appendChild(realtimeSctipt);
         }
 
-        const sessionKey = await this.sessionGet("SESSION_KEY_OBJ")
+        const sessionKey = await this.sessionGet("SESSION_KEY_OBJ");
 
         if (this.propertyId && this.userKey && sessionKey && this.ip) {
-
           window.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
               this.visitedTime = new Date();
@@ -847,11 +872,11 @@ const isLive = !window.location.origin.includes("localhost");
           });
 
           const observer = new MutationObserver(() => {
-            let pageTitle = document.title
+            let pageTitle = document.title;
 
             const currentUrl = document.URL.replace(/\/$/, "");
 
-            if ((this.pageUrl !== currentUrl && this.pageTitle !== pageTitle)) {
+            if (this.pageUrl !== currentUrl && this.pageTitle !== pageTitle) {
               this.pageUrl = currentUrl;
               this.pageTitle = pageTitle;
               this.visitedTime = new Date();
@@ -866,12 +891,11 @@ const isLive = !window.location.origin.includes("localhost");
             }
           });
 
-          const config = { subtree: true, childList: true, };
+          const config = { subtree: true, childList: true };
           observer.observe(document, config);
         }
       }
       if (property_id && verified === false) {
-
         navigator.sendBeacon(
           this.hostUrl + "/api/verifyscript",
           JSON.stringify({
@@ -880,8 +904,33 @@ const isLive = !window.location.origin.includes("localhost");
             IP: this.ip,
           })
         );
-
       }
+
+      // load rrweb script
+      const traekRRWebScript = document.createElement("script");
+      traekRRWebScript.src =
+        "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
+
+      traekRRWebScript.onload = async () => {
+        if (this.allowSessionRecord) {
+          await this.recordSessions();
+          this.callTrackingApi();
+
+          setInterval(() => {
+            console.info(
+              "SAVE_RECORDING_INTERVAL_TIME =>",
+              SAVE_RECORDING_INTERVAL_TIME
+            );
+            this.saveSessionRecording();
+          }, SAVE_RECORDING_INTERVAL_TIME);
+
+          // if (this.allowSession) {
+          // } else {
+          //   console.info("this.allowSession ,interval cancelled");
+          // }
+        }
+      };
+      document.head.appendChild(traekRRWebScript);
     } catch (error) {
       console.log(error.message);
     } finally {
@@ -892,7 +941,9 @@ const isLive = !window.location.origin.includes("localhost");
   App.TraekAnalytics.prototype.getElementsData = async function () {
     return;
     try {
-      const fetchedUrls = await fetch(`${this.cdnUrl}/themes/bars/${this.websiteUrl}/elementUrls.json`);
+      const fetchedUrls = await fetch(
+        `${this.cdnUrl}/themes/bars/${this.websiteUrl}/elementUrls.json`
+      );
       const urlsObject = Object.values(JSON.parse(await fetchedUrls.text()));
       this.elementUrlData = urlsObject;
 
@@ -902,17 +953,24 @@ const isLive = !window.location.origin.includes("localhost");
       elementsScript.type = "text/javascript";
       document.head.appendChild(elementsScript);
     } catch (error) {
-      console.error("ERROR WHILE FETCHING ELEMENT URLS IN TRACKING-INIT-UAT", error);
+      console.error(
+        "ERROR WHILE FETCHING ELEMENT URLS IN TRACKING-INIT-UAT",
+        error
+      );
     }
   };
 })(Traek);
 
-const apiKey = document.querySelector("script[id*=traek_script]").id.split("&")[1];
+const apiKey = document
+  .querySelector("script[id*=traek_script]")
+  .id.split("&")[1];
 
-const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200"
-const assets = isLive ? "https://assets.traek.io" : `${window.location.origin}/uat`;
+const hostUrl = isLive ? "https://uat-app.traek.io" : "http://localhost:4200";
+const assets = isLive
+  ? "https://assets.traek.io"
+  : `${window.location.origin}/uat`;
 
-console.info('assets =>', assets);
-console.info('hostUrl =>', hostUrl);
+console.info("assets =>", assets);
+console.info("hostUrl =>", hostUrl);
 
 const traek = new Traek.TraekAnalytics(apiKey, hostUrl, assets).trackUserData();
