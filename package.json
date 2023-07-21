@@ -1,0 +1,43 @@
+{
+  "name": "treak-test-tool",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@testing-library/jest-dom": "^4.2.4",
+    "@testing-library/react": "^9.3.2",
+    "@testing-library/user-event": "^7.1.2",
+    "axios": "^0.19.2",
+    "firebase-tools": "^12.4.2",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "react-owl-carousel": "^2.3.3",
+    "react-router-dom": "^5.1.2",
+    "react-scripts": "3.4.1",
+    "rrweb-player": "^1.0.0-alpha.4"
+  },
+  "scripts": {
+    "predeploy": "npm run build",
+    "push": "git add ./ && git commit -m 'changes in script' && git push",
+    "start": "react-scripts --openssl-legacy-provider start",
+    "build": "react-scripts --openssl-legacy-provider build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "deploy:prod": "cp .env.prod .env && npm run build && firebase deploy -P prod",
+    "deploy:uat": "cp .env.uat .env && npm run build && firebase deploy -P uat"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

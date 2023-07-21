@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "traek-uat",
+    "prod": "traek-prod",
+    "uat": "traek-uat"
+  },
+  "targets": {},
+  "etags": {}
+}
