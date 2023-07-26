@@ -4,6 +4,7 @@ window.addEventListener(
   ({ data }) => {
     if (data?.target === "traekAnalytics" && data?.action === "traekObject") {
       window.Traek = {};
+
       (function (App) {
         App.RealtimeAnalytics = function () {
           const traek = JSON.parse(data.traekObject);
@@ -11,9 +12,12 @@ window.addEventListener(
           this.unsubscribeUser = () => {};
           this.hostUrl = traek.hostUrl;
           this.cdnUrl = traek.cdnUrl;
+          this.isSendBtnDisabled = false;
           this.propertyId = traek.propertyId;
+          this.isApologies = false;
           this.ipAddress = traek.ip;
           this.userKey = traek.userKey;
+          this.ablyChannelKey = traek.userKey;
           this.userTypingTimeout;
           this.currentPageUrl = traek.pageUrl;
           this.currentPageTitle = traek.pageTitle;
@@ -24,6 +28,7 @@ window.addEventListener(
           this.firebaseAccessToken = traek.firebaseAccessToken;
           this.firebase;
           this.userTypingStatusInterval;
+          this.shiftHuman = false;
           this.initiated = false;
           this.traekImages = [];
           this.manualCloseHandler = false;
@@ -39,8 +44,8 @@ window.addEventListener(
           this.autoOpenChatBox = true;
           this.supportExecutiveImage = "https://assets.traek.io/executive-placeholder-image.png";
           this.companyLogo = "https://assets.traek.io/chat-icon-dark.png";
-          this.headerContent = "Please fill out the form below for Sid to start helping you.";
-          this.supportMessageContent = "I am here to help.";
+          this.headerContent = "Chat with us! ";
+          this.supportMessageContent = "How can I assist you? ";
           this.headerBackgroundColor = "#02203d";
           this.headerTextColor = "#FFFFFF";
           this.agentMessageBackground = "#f5f5f5";
@@ -56,6 +61,7 @@ window.addEventListener(
             messagingSenderId: "942400633658",
             appId: "1:942400633658:web:23db8476133350dd272e03",
           };
+          this.shiftHuman = localStorage.getItem("shiftHuman");
         };
 
         App.RealtimeAnalytics.prototype.localization = function () {
@@ -146,6 +152,7 @@ window.addEventListener(
           this.addEmojiPicker();
           this.setUserStatus({ status: "active" });
           this.startRealtimeTraeking();
+          // this.initAbly();
 
           const eventState = {
             isFormSubmitted: false,
@@ -287,6 +294,10 @@ window.addEventListener(
           }
         };
 
+        App.RealtimeAnalytics.prototype.handleQuestionClick = function (question) {
+          console.log("Clicked on question:", question);
+        };
+
         App.RealtimeAnalytics.prototype.startRealtimeTraeking = async function () {
           this.firebase = firebase.initializeApp(this.firebaseConfig);
           await this.firebase
@@ -334,22 +345,26 @@ window.addEventListener(
                   }
                   if (this.initiated) {
                     document.querySelector("#traek-chat-header").innerHTML = `
-                  <div class="chat-header-initialized">
-                    <div class="chat-header-inner">
                     
+                    <div class="chat-header-initialized">
+                    <div class="chat-header-inner">
+                   <div> 
+                   <div style="display: flex;align-items: center;">
                   <div class="chat-box-header-logo">
                     <img class="chat-logo" src=${this.chatWidget?.company_logo || this.companyLogo} alt="logo" />
-
                     <img class="chat-user-logo" src=${this.chatWidget?.support_executive_image || this.supportExecutiveImage} alt="executive-image" />
+                    <img class="chat-user-AIlogo" src="https://assets.traek.io/AI-icons-bot.png" alt="executive-image" />
                     <span class="chatbox-head-active-dot"></span>
                 </div>
                   <div class="chat-header-text">
                     <div class="chat-online chat-offline"></div>
                     <div class="line-truncate-2">${this.chatWidget?.support_message || this.supportMessageContent}</div>
                   </div>
+                  </div>
+                  </div>
                 <span class="chat-box-toggle" name="closeChatBoxHandlerToggle">
                   <svg
-                    style="height: 15px"
+                    style="height: 22px"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -364,62 +379,42 @@ window.addEventListener(
                   </svg>
                 </span>
                 </div>
-                </div>`;
+                </div>
+                    `;
                     document.querySelector("#traek-main-content").innerHTML = `<div class="chat-box-body">
+
                     <div id="typing" class="typing hide">Typing...</div>
-                    <div
-                    id="imagePreview"
-                    style="
-                      display: none;
-                      position: relative;
-                      height: 150px;
-                      margin-top: 20px;
-                    "
-                  ></div>
-                  <div id="chatLogs" class="chat-logs">
-                  </div> 
+
+                    <div id="imagePreview" style="display: none;"></div>
+
+                    <div id="chatLogs" class="chat-logs"></div> 
                   </div>
+
+                  
+                <div class="chatbox-inner-wrapper">
+                    <div id="questions">
+                        <div class="button-container"></div>
+                    </div>
+
                 <div class="chat-input-wrap chat-msg-input-box">
                   <form name="updateChatFunction">
-                    <input
-                      data-i18n-key-placeholder="msg-input-placeholder"
+                    <textarea
                       type="text"
                       id="chat-input"
                       autocomplete="off"
                       placeholder="Write a message..."
-                    />
-                    <div id="chat-emoji" class="chat-tooltip">
-                      <svg style="height: 18px; margin-bottom:-2px;" viewBox="0 0 19 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9.53415 18.0258C13.8429 18.0258 17.3359 14.5329 17.3359 10.2241C17.3359 5.91531 13.8429 2.42236 9.53415 2.42236C5.22537 2.42236 1.73242 5.91531 1.73242 10.2241C1.73242 14.5329 5.22537 18.0258 9.53415 18.0258Z" stroke="#BFBFC0" stroke-width="1.24828" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M6.41406 11.7844C6.41406 11.7844 7.58432 13.3448 9.53475 13.3448C11.4852 13.3448 12.6554 11.7844 12.6554 11.7844" stroke="#BFBFC0" stroke-width="1.24828" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M7.19336 7.88379H7.20064" stroke="#BFBFC0" stroke-width="1.56034" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M11.875 7.88379H11.8823" stroke="#BFBFC0" stroke-width="1.56034" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                      <div data-i18n-key-innertext="emoji-tooltip-msg" class="chat-tooltip-wrapper">Insert an Emoji</div>
-                    </div>
-                    <div id="chat-file-input" class="chat-tooltip">
-                      <label htmlFor="imageupload">
-                      <svg style="height: 18px; margin-bottom:-2px;" viewBox="0 0 17 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M15.5307 8.72846L8.60184 15.8126C7.753 16.6805 6.60172 17.168 5.40128 17.168C4.20083 17.168 3.04956 16.6805 2.20072 15.8126C1.35187 14.9448 0.875 13.7677 0.875 12.5403C0.875 11.313 1.35187 10.1359 2.20072 9.26806L9.12961 2.18389C9.69551 1.60531 10.463 1.28027 11.2633 1.28027C12.0636 1.28027 12.8311 1.60531 13.397 2.18389C13.9629 2.76247 14.2808 3.54718 14.2808 4.36541C14.2808 5.18364 13.9629 5.96836 13.397 6.54693L6.46059 13.6311C6.17764 13.9204 5.79389 14.0829 5.39374 14.0829C4.99359 14.0829 4.60983 13.9204 4.32688 13.6311C4.04394 13.3418 3.88498 12.9495 3.88498 12.5403C3.88498 12.1312 4.04394 11.7389 4.32688 11.4496L10.728 4.91272" stroke="#C3C4C4" stroke-width="1.24828" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                      </label>
-                      <input
-                        style="position: absolute; width: 40px; opacity: 0; left: 0px; right: 0px; height: 40px; cursor: pointer;"
-                        type="file"
-                        id="imageupload"
-                        name="imageupload"
-                        accept="image/gif, image/jpeg, image/jpg, image/png"
-                      />
-                      <div data-i18n-key-innertext="send-file-tooltip" class="chat-tooltip-wrapper">Send a File</div>
-                    </div>
+                    ></textarea>
+                    
                     <button
                       type="submit"
                       style="
                         width: max-content;
                         background: transparent;
                         color: #999;
-                        padding: 10px 0px;
                         border-radius: 0;
+                        padding: 0;
+                        position: relative;
+                        top: 2px;
                         margin-right: 10px;
                       "
                       class="chat-submit chat-tooltip"
@@ -432,15 +427,92 @@ window.addEventListener(
                       </svg>
                     </button>
                   </form>
-                </div>`;
+                </div>
+                
+                  <div style="background: #F8F9FF;color: #4f4f4f;font-size: 12px;text-align: center; height: 30px; padding: 8px 0; width:100%; display: flex; justify-content: center; align-items: center;">
+                      <span data-i18n-key-innertext="powered-by-label">Powered by</span> 
+                      <a style="color: #4f4f4f;text-decoration: none; display:flex;" href="https://www.traek.io/" target="_blank">
+                      <svg style="margin: 0px 5px; position:relative; top:2px;" width="14" height="14" viewBox="0 0 37 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path fill-rule="evenodd" clip-rule="evenodd" d="M36.6553 8.8407L22.706 15.5503C22.3534 15.7199 22.1292 16.0766 22.1292 16.4679V37.1552H32.5825C34.8319 37.1552 36.6553 35.3317 36.6553 33.0824V8.8407ZM14.5255 37.1552V16.4678C14.5255 16.0765 14.3013 15.7199 13.9487 15.5503L0 8.84093V33.0824C0 35.3317 1.82346 37.1552 4.07281 37.1552H14.5255Z" fill="#A5ACC7"/>
+                          <path fill-rule="evenodd" clip-rule="evenodd" d="M4.07281 0.5C1.82346 0.5 0 2.32346 0 4.57281V5.82483C0 5.95205 0.0892323 6.05933 0.203876 6.11448L16.35 13.8808L16.4942 13.9501C16.8468 14.1197 17.0711 14.4764 17.0711 14.8677V15.0277V35.899C17.0711 36.5928 17.6336 37.1553 18.3274 37.1553C19.0212 37.1553 19.5837 36.5928 19.5837 35.899V15.0278V14.8678C19.5837 14.4765 19.8079 14.1198 20.1605 13.9502L20.3048 13.8808L36.4509 6.11453C36.5658 6.05923 36.6553 5.95173 36.6553 5.82421V4.57281C36.6553 2.32346 34.8319 0.5 32.5825 0.5H4.07281Z" fill="url(#paint0_linear_0_1)"/>
+                          <defs>
+                          <linearGradient id="paint0_linear_0_1" x1="12" y1="1.81798e-06" x2="18.5" y2="37" gradientUnits="userSpaceOnUse">
+                          <stop stop-color="#5C59FB"/>
+                          <stop offset="1" stop-color="#9AA4FF"/>
+                          </linearGradient>
+                          </defs>
+                      </svg>
+                      <span data-innertext="traek-label">Traek.io</span>
+                      </a>
+                  </div>
+
+                </div>
+                
+                `;
+
+                    if (!this.chatWidget?.aiSettings?.isAiEnabled) {
+                      var aiLogo = document.querySelector(".chat-user-AIlogo");
+                      aiLogo.style.display = "none";
+                    } else {
+                      var humanLogo = document.querySelector(".chat-user-logo");
+                      humanLogo.style.display = "none";
+                    }
+
+                    if (this.shiftHuman) {
+                      var humanLogo = document.querySelector(".chat-user-logo");
+                      humanLogo.style.display = "revert";
+                      var aiLogo = document.querySelector(".chat-user-AIlogo");
+                      aiLogo.style.display = "none";
+                      document.querySelector("#questions").style.display = "none";
+                    }
+
+                    function getDivHeight() {
+                      const div = document.querySelector(".button-container");
+                      let height = div.clientHeight;
+                      let temp = 350 + height;
+                      let calculatedHeight = "calc(100vh - " + temp + "px)";
+                      // document.querySelector(".chat-box-body").style.height =
+                      //   calculatedHeight;
+                    }
+                    getDivHeight();
+
+                    function wideTheInputBox() {
+                      const tx = document.getElementById("chat-input");
+                      tx.style.height = 0 + "px";
+                      tx.addEventListener("input", OnInput, false);
+
+                      function OnInput() {
+                        this.style.height = 0;
+                        this.style.height = this.scrollHeight + "px";
+                      }
+                    }
+                    wideTheInputBox();
+
+                    function submitOnEnter(event) {
+                      if (event.which === 13 && !event.shiftKey) {
+                        wideTheInputBox();
+                        if (!event.repeat) {
+                          const newEvent = new Event("submit", {
+                            cancelable: true,
+                          });
+                          event.target.form.dispatchEvent(newEvent);
+                        }
+
+                        event.preventDefault(); // Prevents the addition of a new line in the text field
+                      }
+                    }
+
+                    document.getElementById("chat-input").addEventListener("keydown", submitOnEnter);
+
                     let chatInput = document.querySelector("[name='updateChatFunction']");
                     if (chatInput) {
                       if (chatInput["onsubmit"] === null) {
                         chatInput.onsubmit = (event) => {
+                          wideTheInputBox();
                           this.updateChatFunction(event);
                         };
                       }
-                      let textBox = document.querySelector("#chat-input");
+                      let textBox = document.getElementById("chat-input");
                       if (textBox) {
                         if (chatInput["oninput"] === null) {
                           textBox.oninput = () => {
@@ -463,6 +535,18 @@ window.addEventListener(
                         this.chats = docs;
                         let messages = document.querySelector(".chat-logs");
                         messages.innerHTML = null;
+
+                        this.chatWidget?.aiSettings?.isAiEnabled &&
+                          this.chatWidget?.aiSettings?.initialMessages.length > 0 &&
+                          this.chatWidget?.aiSettings?.initialMessages?.forEach((val) => {
+                            if (val.length > 0) {
+                              messageElement = document.createElement("div");
+                              messageElement.classList.add("chat-msg", "server");
+                              messageElement.innerHTML = `<div class="cm-msg-text">${val}</div>`;
+                              messages.appendChild(messageElement);
+                            }
+                          });
+
                         let tmpPastDay;
                         this.chats.forEach((doc, index) => {
                           let messageElement,
@@ -527,6 +611,32 @@ window.addEventListener(
                           messages.appendChild(messageElement);
                           this.handleChatBoxScroll();
                         });
+                        if (this.isTyping) {
+                          messages = document.querySelector(".chat-logs");
+                          messageElement1 = document.createElement("div");
+                          messageElement1.classList.add("chat-msg", "server");
+                          messages.appendChild(messageElement1);
+                          messageElement1.innerHTML = `<div id="typing" class="typing">typing...</div>`;
+                        }
+                        if (this.isApologies) {
+                          let messages = document.querySelector(".chat-logs");
+                          let questionBtn = document.createElement("button");
+                          questionBtn.textContent = "Talk to a agent";
+                          questionBtn.classList.add("apologies-question");
+                          questionBtn.addEventListener("click", () => {
+                            this.shiftHuman = true;
+                            localStorage.setItem("shiftHuman", true);
+                            questionBtn.classList.add("hideChips");
+                            console.log("now talking with agent");
+                            var humanLogo = document.querySelector(".chat-user-logo");
+                            humanLogo.style.display = "revert";
+                            var aiLogo = document.querySelector(".chat-user-AIlogo");
+                            aiLogo.style.display = "none";
+                            document.querySelector("#questions").style.display = "none";
+                          });
+                          messages.appendChild(questionBtn);
+                          this.isApologies = false;
+                        }
                       });
                   } else {
                     document.querySelector("#traek-main-content").innerHTML = `<div id="chatLogs" class="chat-logs">
@@ -630,6 +740,112 @@ window.addEventListener(
                       element.onclick = () => this.closeChatBoxHandler();
                     }
                   });
+                  if (this.chatWidget?.aiSettings?.suggestedQuestions?.length > 0 && this.chatWidget?.aiSettings.isAiEnabled) {
+                    this.chatWidget?.aiSettings?.suggestedQuestions?.forEach((que) => {
+                      if (que.length > 0) {
+                        let questionBtn = document.createElement("button");
+                        questionBtn.textContent = que;
+                        questionBtn.classList.add("suggested-question");
+                        questionBtn.addEventListener("click", async () => {
+                          if (!this.isTyping && !this.isSendBtnDisabled) {
+                            let messages = document.querySelector(".chat-logs");
+                            messageElement = document.createElement("div");
+                            messageElement.classList.add("chat-msg", "user");
+                            messages.appendChild(messageElement);
+                            messageElement.innerHTML = `<div class="cm-msg-text">${que}</div>`;
+                            questionBtn.classList.add("hideChips");
+
+                            this.firebase
+                              .firestore()
+                              .collection("conversations")
+                              .doc(this.propertyId + this.userKey)
+                              .collection("chats")
+                              .doc()
+                              .set({
+                                isDelivered: true,
+                                isRead: true,
+                                isClient: true,
+                                content: que,
+                                time: new Date(),
+                                isAi: this.chatWidget?.aiSettings?.isAiEnabled || true,
+                                receiver: this.propertyId,
+                                sender: this.userKey,
+                                type: "text",
+                              });
+
+                            if (this.shiftHuman) return;
+                            this.isTyping = true;
+
+                            if (this.chatWidget?.aiSettings.isAiEnabled) {
+                              this.isSendBtnDisabled = true;
+                              let response = await fetch(this.hostUrl + "/api/query", {
+                                method: "POST",
+                                body: JSON.stringify({
+                                  propertyId: this.propertyId,
+                                  userKey: this.userKey,
+                                  currentPage: this.currentPageTitle,
+                                  userName: null,
+                                  userEmail: null,
+                                  query: que,
+                                  skip: true,
+                                }),
+                              });
+
+                              const reader = response.body.getReader();
+                              const decoder = new TextDecoder();
+                              let done = false;
+                              let text = "";
+
+                              this.isTyping = false;
+                              if (document.getElementById("typing")) {
+                                let typing = document.getElementById("typing");
+                                typing.remove();
+                              }
+
+                              let messages = document.querySelector(".chat-logs");
+                              messageElement1 = document.createElement("div");
+                              messageElement1.classList.add("chat-msg", "server");
+                              messages.appendChild(messageElement1);
+
+                              while (!done) {
+                                const { value, done: doneReading } = await reader.read();
+                                done = doneReading;
+                                const chunkValue = decoder.decode(value);
+
+                                text += chunkValue;
+
+                                messageElement1.innerHTML = `<div class="cm-msg-text">${text}</div>`;
+                              }
+
+                              this.isSendBtnDisabled = false;
+
+                              this.firebase
+                                .firestore()
+                                .collection("conversations")
+                                .doc(this.propertyId + this.userKey)
+                                .collection("chats")
+                                .doc()
+                                .set({
+                                  isDelivered: true,
+                                  isRead: true,
+                                  isClient: false,
+                                  content: text,
+                                  time: new Date(),
+                                  isAi: this.chatWidget?.aiSettings.isAiEnabled,
+                                  receiver: this.userKey,
+                                  sender: this.propertyId,
+                                  type: "text",
+                                });
+                            }
+                          }
+                        });
+                        const questionsDiv = document.querySelector("#questions");
+                        if (questionsDiv) {
+                          questionsDiv.appendChild(questionBtn);
+                        }
+                      }
+                    });
+                  }
                 });
             })
             .catch((error) => {
@@ -697,10 +913,21 @@ window.addEventListener(
 
         App.RealtimeAnalytics.prototype.handleChatBoxScroll = function () {
           let messageBox = document.querySelector(".chat-box-body");
-          messageBox.scrollTo(0, messageBox.scrollHeight);
+          messageBox && messageBox.scrollTo(0, messageBox.scrollHeight);
         };
 
         App.RealtimeAnalytics.prototype.chatBoxOpened = function () {
+          function getDivHeight() {
+            const div = document.querySelector(".button-container");
+            if (div) {
+              let height = div.clientHeight;
+              let temp = 350 + height;
+              let calculatedHeight = "calc(100vh - " + temp + "px)";
+              // document.querySelector(".chat-box-body").style.height =
+              //   calculatedHeight;
+            }
+          }
+          getDivHeight();
           this.updateChatRead();
           this.chatBoxEvent("Chat window Maximized");
           this.handleChatBoxScroll();
@@ -743,7 +970,7 @@ window.addEventListener(
             JSON.stringify({
               propertyId: this.propertyId,
               userKey: this.userKey,
-              currentPage: this.currentPageTitle,
+              currentPage: this.currentPageTitle || "Untitled",
               userName: name,
               userEmail: email,
               skip: false,
@@ -815,7 +1042,7 @@ window.addEventListener(
 
         App.RealtimeAnalytics.prototype.updateChatFunction = async function (e) {
           e.preventDefault();
-          if (this.initiated) {
+          if (this.initiated && !this.isSendBtnDisabled) {
             let textBox = document.querySelector("#chat-input");
             let message = textBox.value.trim();
             let time = new Date();
@@ -841,6 +1068,7 @@ window.addEventListener(
                       isClient: true,
                       content: imageMessage,
                       time,
+                      isAi: this.chatWidget?.aiSettings?.isAiEnabled || true,
                       receiver: this.propertyId,
                       sender: this.userKey,
                       type: "file",
@@ -885,6 +1113,7 @@ window.addEventListener(
                   isRead: false,
                   isClient: true,
                   content: message,
+                  isAi: this.chatWidget?.aiSettings?.isAiEnabled || true,
                   time,
                   receiver: this.propertyId,
                   sender: this.userKey,
@@ -911,7 +1140,71 @@ window.addEventListener(
                 })
                 .catch((error) => console.log(error.message));
             }
+
             textBox.value = null;
+
+            if (this.shiftHuman) return;
+
+            if (this.chatWidget?.aiSettings?.isAiEnabled) {
+              this.isTyping = true;
+            }
+
+            if (this.chatWidget?.aiSettings?.isAiEnabled) {
+              this.isSendBtnDisabled = true;
+              let response = await fetch(this.hostUrl + "/api/query", {
+                method: "POST",
+                body: JSON.stringify({
+                  propertyId: this.propertyId,
+                  userKey: this.userKey,
+                  currentPage: this.currentPageTitle,
+                  userName: null,
+                  userEmail: null,
+                  query: message,
+                  skip: true,
+                }),
+              });
+
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
+              let done = false;
+              let text = "";
+
+              this.isTyping = false;
+
+              while (!done) {
+                const { value, done: doneReading } = await reader.read();
+                done = doneReading;
+                const chunkValue = decoder.decode(value);
+
+                text += chunkValue;
+
+                messageElement1.innerHTML = `<div class="cm-msg-text">${text}</div>`;
+              }
+
+              this.isSendBtnDisabled = false;
+
+              if (text.includes("Apologies, but I don't have the answer to that question")) {
+                this.isApologies = true;
+              }
+
+              this.firebase
+                .firestore()
+                .collection("conversations")
+                .doc(this.propertyId + this.userKey)
+                .collection("chats")
+                .doc()
+                .set({
+                  isDelivered: true,
+                  isRead: true,
+                  isClient: false,
+                  content: text,
+                  time: new Date(),
+                  isAi: this.chatWidget?.aiSettings.isAiEnabled,
+                  receiver: this.userKey,
+                  sender: this.propertyId,
+                  type: "text",
+                });
+            }
           }
         };
 
@@ -964,7 +1257,7 @@ window.addEventListener(
             JSON.stringify({
               propertyId: this.propertyId,
               userKey: this.userKey,
-              currentPage: this.currentPageTitle,
+              currentPage: this.currentPageTitle || "Untitled",
               userName: null,
               userEmail: null,
               skip: true,
@@ -989,6 +1282,95 @@ window.addEventListener(
             newwin.focus();
           }
         };
+
+        // App.RealtimeAnalytics.prototype.initAbly = async function () {
+        //   let AblyAppCDN = document.createElement("script");
+        //   AblyAppCDN.src = "https://cdn.ably.com/lib/ably.min-1.js";
+        //   document.head.appendChild(AblyAppCDN);
+
+        //   let markDownCDN = document.createElement("script");
+        //   markDownCDN.src = "https://cdn.jsdelivr.net/npm/marked/marked.min.js";
+        //   document.head.appendChild(markDownCDN);
+
+        //   let renderer;
+
+        //   markDownCDN.onload = async () => {
+        //     renderer = new marked.Renderer();
+        //     renderer.link = function (href, title, text) {
+        //       if (href.includes("mailto")) {
+        //         href = href.replace(/(\S+@\S+\.\S+)/g, `<a target="_blank" href="$1">${text}</a>`);
+        //       }
+        //       return href;
+        //     };
+        //   };
+
+        //   const ably = new Ably.Realtime.Promise("sRYtXw.DX5S_w:sQpaY7M2nlmeBN9vSiItdc-AHWhk2rK-1JV22jF-2yY");
+
+        //   ably.connection.once("connected");
+        //   const channel = ably.channels.get(this.ablyChannelKey);
+
+        //   let temp = "";
+        //   let renderMessage = "";
+
+        //   await channel.subscribe((event) => {
+        //     let chatSubmit = document.getElementById("chat-submit");
+        //     chatSubmit.disabled = true;
+
+        //     let messages = document.querySelector(".chat-logs");
+        //     temp += event.data.token;
+
+        //     if (!document.getElementById(event.data.interactionId)) {
+        //       messageElement = document.createElement("div");
+        //       messageElement.setAttribute("id", event.data.interactionId);
+        //       messageElement.classList.add("chat-msg", "server");
+        //       messages.appendChild(messageElement);
+        //     } else {
+        //       messageElement = document.getElementById(event.data.interactionId);
+        //     }
+
+        //     if (event.data.token == undefined) {
+        //       temp = "";
+        //     } else {
+        //       if (typeof event.data.token !== "object") {
+        //         if (document.getElementById("typing")) {
+        //           let typing = document.getElementById("typing");
+        //           typing.remove();
+        //         }
+        //         renderMessage = marked.parse(temp, { renderer: renderer });
+        //         messageElement.innerHTML = `<div class="cm-msg-text">${renderMessage}</div>`;
+        //       }
+        //     }
+
+        //     !this.submitAnswer &&
+        //       setTimeout(() => {
+        //         chatSubmit.disabled = false;
+        //         this.submitAnswer = true;
+        //       }, 8000);
+
+        //     if (event.data.token === undefined) {
+        //       chatSubmit.disabled = false;
+        //       this.submitAnswer = true;
+
+        //       this.firebase
+        //         .firestore()
+        //         .collection("conversations")
+        //         .doc(this.propertyId + this.userKey)
+        //         .collection("chats")
+        //         .doc()
+        //         .set({
+        //           isDelivered: true,
+        //           isRead: true,
+        //           isClient: false,
+        //           content: renderMessage,
+        //           time: new Date(),
+        //           isAi: this.chatWidget?.aiSettings?.isAiEnabled || true,
+        //           receiver: this.userKey,
+        //           sender: this.propertyId,
+        //           type: "text",
+        //         });
+        //     }
+        //   });
+        // };
       })(Traek);
       new Traek.RealtimeAnalytics().initiateFirebase();
     }

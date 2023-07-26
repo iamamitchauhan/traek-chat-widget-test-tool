@@ -21,8 +21,8 @@ let traekChatCss = `
 .traekChatboxIframeCss{
   display: block;
   position: fixed;
-  width: 362px;
-  height: 515px;
+  width: 400px;
+  height: 600px;
   border-radius: 12px;
   box-shadow: 0px 0px 24.9655px rgba(114, 120, 145, 0.25);
   background: #fff;
@@ -53,7 +53,7 @@ let traekChatCss = `
   left:10px;
 }
 .chat-box-top-left{
-  top: 100px;
+  top: 10px;
   left:10px;
 }
 .chat-icon-top-right{
@@ -61,7 +61,7 @@ let traekChatCss = `
   right: 10px;
 }
 .chat-box-top-right{
-  top: 100px;
+  top: 10px;
   right: 10px;
 }
 .chat-icon-middle-left{
@@ -70,7 +70,7 @@ let traekChatCss = `
   transform: translateY(-50%);
 }
 .chat-box-middle-left{
-  left: 75px;
+  left: 5px;
   top: 50%;
   transform: translateY(-50%);
   animation: jump-chat-box-open-middle 0.4s linear alternate;
@@ -83,7 +83,7 @@ let traekChatCss = `
 }
 .chat-box-middle-right{
   top: 50%;
-  right: 75px;
+  right: 5px;
   transform: translateY(-50%);
   animation: jump-chat-box-open-middle 0.4s linear alternate;
   margin-right: 12px;
@@ -93,7 +93,7 @@ let traekChatCss = `
   left:10px;
 }
 .chat-box-bottom-left{
-  bottom:100px;
+  bottom:10px;
   left:10px;
 }
 .chat-icon-bottom-right{
@@ -101,7 +101,7 @@ let traekChatCss = `
   right: 10px;
 }
 .chat-box-bottom-right{
-  bottom: 100px;
+  bottom: 10px;
   right: 10px;
 }
 .chat-notification-top-left{

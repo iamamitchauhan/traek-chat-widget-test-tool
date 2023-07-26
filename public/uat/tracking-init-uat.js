@@ -727,6 +727,7 @@ const isLive = !window.location.origin.includes("localhost");
         // type,
         heatmaps,
         firebaseAccessToken,
+        sessionRecording = false
       } = JSON.parse(propertyData);
 
       Object.assign(this, {
@@ -824,27 +825,29 @@ const isLive = !window.location.origin.includes("localhost");
         );
       }
 
-      // load rrweb script
-      const traekRRWebScript = document.createElement("script");
-      traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
+      // load rrweb script if session storage allowed
+      if (sessionRecording) {
+        const traekRRWebScript = document.createElement("script");
+        traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
 
-      traekRRWebScript.onload = async () => {
-        if (this.allowSessionRecord) {
-          await this.recordSessions();
-          this.callTrackingApi();
+        traekRRWebScript.onload = async () => {
+          if (this.allowSessionRecord) {
+            await this.recordSessions();
+            this.callTrackingApi();
 
-          setInterval(() => {
-            console.info("SAVE_RECORDING_INTERVAL_TIME =>", SAVE_RECORDING_INTERVAL_TIME);
-            this.saveSessionRecording();
-          }, SAVE_RECORDING_INTERVAL_TIME);
+            setInterval(() => {
+              console.info("SAVE_RECORDING_INTERVAL_TIME =>", SAVE_RECORDING_INTERVAL_TIME);
+              this.saveSessionRecording();
+            }, SAVE_RECORDING_INTERVAL_TIME);
 
-          // if (this.allowSession) {
-          // } else {
-          //   console.info("this.allowSession ,interval cancelled");
-          // }
-        }
-      };
-      document.head.appendChild(traekRRWebScript);
+            // if (this.allowSession) {
+            // } else {
+            //   console.info("this.allowSession ,interval cancelled");
+            // }
+          }
+        };
+        document.head.appendChild(traekRRWebScript);
+      }
     } catch (error) {
       console.log(error.message);
     } finally {
