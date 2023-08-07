@@ -561,6 +561,7 @@ const isLive = !window.location.origin.includes("localhost");
       ];
       try {
         let forms = document.querySelectorAll("form");
+        console.log({ forms }, "forms");
         function formSubmitted(e, form, data, cb) {
           const formName = e.currentTarget.name.value;
           const formId = e.currentTarget.id;
@@ -591,16 +592,22 @@ const isLive = !window.location.origin.includes("localhost");
             }
             let elementObject = { tag, type, label, name };
             const checkRequiredOrEmpty = (value) => {
+              console.log(value, "value checkemptyvalue");
               if (value === "" || value === null || value === undefined) {
                 checkEmpty.push(null);
+                console.log("null push in checkempty");
               } else {
                 checkEmpty.push(true);
+                console.log("true push in checkempty");
               }
             };
 
             if (tag === "TEXTAREA") {
               if (label !== "g-recaptcha-response" && name !== "g-recaptcha-response") {
+                console.info("TEXTAREA =>");
+                console.info(" element.value =>", element.value);
                 elementObject.value = element.value;
+                checkRequiredOrEmpty(element.value);
                 formData.elements.push(elementObject);
               }
             } else if (tag === "SELECT") {
@@ -638,8 +645,10 @@ const isLive = !window.location.origin.includes("localhost");
                     break;
                   default:
                     if (!ignore.find((val) => val === type)) {
+                      console.log(!ignore.find((val) => val === type), "ignore value ");
                       elementObject.value = element.value;
                       formData.elements.push(elementObject);
+                      console.log("checkRequiredOrEmpty function call");
                       checkRequiredOrEmpty(element.value);
                     }
                     break;
@@ -647,7 +656,13 @@ const isLive = !window.location.origin.includes("localhost");
               }
             }
           }
+          console.log(checkEmpty, "before form api calling checkEmpty");
+          console.log(
+            checkEmpty.every((data) => data === true),
+            "before calling  checkEmpty value is true or not"
+          );
           if (checkEmpty.every((data) => data === true)) {
+            console.log(formData, "formData after form api calling");
             navigator.sendBeacon(data.hostUrl + "/api/track/forms", JSON.stringify(formData));
           }
 
@@ -657,7 +672,9 @@ const isLive = !window.location.origin.includes("localhost");
 
         forms.forEach((form) => {
           form.onsubmit = function (e) {
+            console.log("onsubmit function of form calling..................");
             formSubmitted(e, form, _this, () => {
+              console.log(e, form, _this, "e, form, _this");
               uploadVisitorRecords(_this.hostUrl);
               _this.saveSessionRecording(true);
             });
@@ -727,7 +744,7 @@ const isLive = !window.location.origin.includes("localhost");
         // type,
         heatmaps,
         firebaseAccessToken,
-        sessionRecording = false
+        sessionRecording = false,
       } = JSON.parse(propertyData);
 
       Object.assign(this, {
@@ -751,102 +768,98 @@ const isLive = !window.location.origin.includes("localhost");
         this.getElementsData();
       }
 
-      if (property_id && verified === true) {
-        // this.allowLeads = shouldAllowLead;
-        // this.allowSession = shouldAllowSession;
-        this.callFeedsApi();
-        this.trackForms();
-        // this.callTrackingApi();
+      if (property_id) {
+        if (verified) {
+          // this.allowLeads = shouldAllowLead;
+          // this.allowSession = shouldAllowSession;
+          this.callFeedsApi();
+          this.trackForms();
+          // this.callTrackingApi();
 
-        if (realtime) {
-          App.TraekAnalytics.currentObject = this;
-          let realtimeSctipt = document.createElement("script");
-          realtimeSctipt.src = this.cdnUrl + "/realtime-uat.js";
-          realtimeSctipt.type = "text/javascript";
-          document.head.appendChild(realtimeSctipt);
-        }
-
-        const sessionKey = await this.sessionGet("SESSION_KEY_OBJ");
-
-        if (this.propertyId && this.userKey && sessionKey && this.ip) {
-          window.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-              this.visitedTime = new Date();
-            } else {
-              this.callTrackingApi();
-            }
-            if (document.visibilityState === "hidden") {
-              this.saveSessionRecording();
-              this.allowSessionRecord = false;
-            } else {
-              this.allowSessionRecord = true;
-            }
-          });
-
-          window.addEventListener("beforeunload", () => {
-            this.saveHeatmap();
-            this.callTrackingApi();
-            this.callApi = false;
-            this.saveSessionRecording();
-          });
-
-          const observer = new MutationObserver(() => {
-            let pageTitle = document.title;
-
-            const currentUrl = document.URL.replace(/\/$/, "");
-
-            if (this.pageUrl !== currentUrl && this.pageTitle !== pageTitle) {
-              this.pageUrl = currentUrl;
-              this.pageTitle = pageTitle;
-              this.visitedTime = new Date();
-              this.newVisit = true;
-              this.callTrackingApi();
-              this.saveHeatmap();
-              this.callFeedsApi();
-
-              setTimeout(() => {
-                this.trackForms();
-              }, 2000);
-            }
-          });
-
-          const config = { subtree: true, childList: true };
-          observer.observe(document, config);
-        }
-      }
-      if (property_id && verified === false) {
-        navigator.sendBeacon(
-          this.hostUrl + "/api/verifyscript",
-          JSON.stringify({
-            API_KEY: this.apiKey,
-            PAGE_URL: this.pageUrl,
-            IP: this.ip,
-          })
-        );
-      }
-
-      // load rrweb script if session storage allowed
-      if (sessionRecording) {
-        const traekRRWebScript = document.createElement("script");
-        traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
-
-        traekRRWebScript.onload = async () => {
-          if (this.allowSessionRecord) {
-            await this.recordSessions();
-            this.callTrackingApi();
-
-            setInterval(() => {
-              console.info("SAVE_RECORDING_INTERVAL_TIME =>", SAVE_RECORDING_INTERVAL_TIME);
-              this.saveSessionRecording();
-            }, SAVE_RECORDING_INTERVAL_TIME);
-
-            // if (this.allowSession) {
-            // } else {
-            //   console.info("this.allowSession ,interval cancelled");
-            // }
+          if (realtime) {
+            App.TraekAnalytics.currentObject = this;
+            let realtimeSctipt = document.createElement("script");
+            realtimeSctipt.src = this.cdnUrl + "/realtime-uat.js";
+            realtimeSctipt.type = "text/javascript";
+            document.head.appendChild(realtimeSctipt);
           }
-        };
-        document.head.appendChild(traekRRWebScript);
+
+          // load rrweb script if session storage allowed
+          if (sessionRecording) {
+            const traekRRWebScript = document.createElement("script");
+            traekRRWebScript.src = "https://cdn.jsdelivr.net/npm/rrweb@latest/dist/record/rrweb-record.min.js";
+
+            traekRRWebScript.onload = async () => {
+              if (this.allowSessionRecord) {
+                await this.recordSessions();
+                this.callTrackingApi();
+
+                setInterval(() => {
+                  console.info("SAVE_RECORDING_INTERVAL_TIME =>", SAVE_RECORDING_INTERVAL_TIME);
+                  this.saveSessionRecording();
+                }, SAVE_RECORDING_INTERVAL_TIME);
+              }
+            };
+            document.head.appendChild(traekRRWebScript);
+          }
+
+          const sessionKey = await this.sessionGet("SESSION_KEY_OBJ");
+
+          if (this.propertyId && this.userKey && sessionKey && this.ip) {
+            window.addEventListener("visibilitychange", () => {
+              if (document.visibilityState === "visible") {
+                this.visitedTime = new Date();
+              } else {
+                this.callTrackingApi();
+              }
+              if (document.visibilityState === "hidden") {
+                this.saveSessionRecording();
+                this.allowSessionRecord = false;
+              } else {
+                this.allowSessionRecord = true;
+              }
+            });
+
+            window.addEventListener("beforeunload", () => {
+              this.saveHeatmap();
+              this.callTrackingApi();
+              this.callApi = false;
+              this.saveSessionRecording();
+            });
+
+            const observer = new MutationObserver(() => {
+              let pageTitle = document.title;
+
+              const currentUrl = document.URL.replace(/\/$/, "");
+
+              if (this.pageUrl !== currentUrl && this.pageTitle !== pageTitle) {
+                this.pageUrl = currentUrl;
+                this.pageTitle = pageTitle;
+                this.visitedTime = new Date();
+                this.newVisit = true;
+                this.callTrackingApi();
+                this.saveHeatmap();
+                this.callFeedsApi();
+
+                setTimeout(() => {
+                  this.trackForms();
+                }, 2000);
+              }
+            });
+
+            const config = { subtree: true, childList: true };
+            observer.observe(document, config);
+          }
+        } else {
+          navigator.sendBeacon(
+            this.hostUrl + "/api/verifyscript",
+            JSON.stringify({
+              API_KEY: this.apiKey,
+              PAGE_URL: this.pageUrl,
+              IP: this.ip,
+            })
+          );
+        }
       }
     } catch (error) {
       console.log(error.message);

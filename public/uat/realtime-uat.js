@@ -261,7 +261,8 @@ let traekChatCss = `
     traekChatIconIframe.src = this.cdnUrl + "/traek-chat-icon-uat.html";
     traekChatIconIframe.id = "traek-chat-icon-iframe";
     traekChatIconIframe.title = "Traek Chat Icon";
-    traekChatIconIframe.classList.add("traekChatIconIframeCss", "traek-hide-element");
+    // traekChatIconIframe.classList.add("traekChatIconIframeCss", "traek-hide-element");
+    traekChatIconIframe.classList.add("traekChatIconIframeCss");
 
     let traekChatBoxIframe = document.createElement("iframe");
     traekChatBoxIframe.src = this.cdnUrl + "/traek-chat-box-uat.html";
